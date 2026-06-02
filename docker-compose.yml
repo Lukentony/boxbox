@@ -1,0 +1,11 @@
+services:
+  boxbox:
+    image: nginx:alpine
+    container_name: boxbox
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8282:80"
+    volumes:
+      - ./scraper/dist:/usr/share/nginx/html:ro
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"

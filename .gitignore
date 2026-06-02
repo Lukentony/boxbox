@@ -1,0 +1,40 @@
+node_modules/
+profile/
+.env
+.env.cookie
+cookies.json
+league-snapshot.json
+
+# Generated data files
+all-teams.json
+breakdown.json
+riders.json
+events.json
+constructors.json
+squads.json
+teams.json
+news.json
+other-categories.json
+dist/data/*.json
+
+# Old project folders (v1, design iterations)
+motogp/
+claude-design/
+*.zip
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Logs (keep script, not logs)
+cron/*.log
+*.log
+
+# Old/duplicate files not part of the app
+scraper/index.html
+scraper/playwright-login.mjs
+scraper/dist/download-all-data.js
+scraper/dist/upload.html
+scraper/README.md
+nginx-setup.sh
+nginx-setup.sh

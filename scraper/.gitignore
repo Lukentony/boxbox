@@ -1,0 +1,25 @@
+node_modules/
+profile/
+.env
+.env.cookie
+cookies.json
+league-snapshot.json
+
+# Generated data files
+all-teams.json
+breakdown.json
+riders.json
+events.json
+constructors.json
+squads.json
+teams.json
+news.json
+other-categories.json
+league-snapshot.json
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

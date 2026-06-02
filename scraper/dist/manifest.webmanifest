@@ -1,0 +1,28 @@
+{
+  "name": "Box Box — MotoGP 2026",
+  "short_name": "Box Box",
+  "description": "MotoGP 2026 + Fantasy League",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0a0a0c",
+  "background_color": "#0a0a0c",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230a0a0c' width='100' height='100' rx='20'/><text y='68' x='50' text-anchor='middle' font-size='52' font-family='system-ui' font-weight='900' font-style='italic' fill='%23ef4444'>BB</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

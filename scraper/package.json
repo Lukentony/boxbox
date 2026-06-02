@@ -1,0 +1,12 @@
+{
+  "name": "boxbox-scraper",
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "check": "node refresh-session.mjs",
+    "fetch": "node fetch-data.mjs",
+    "compute": "node compute.mjs",
+    "news": "node fetch-news.mjs",
+    "pipeline": "node refresh-session.mjs && node fetch-data.mjs && node compute.mjs"
+  }
+}

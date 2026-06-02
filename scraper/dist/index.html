@@ -1,0 +1,2060 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Box Box — MotoGP 2026</title>
+<style>
+/* ─────────────────────────────────────────────────────────
+   Box Box — racing design system
+   ───────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,500;0,700;0,800;0,900;1,800;1,900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  /* Palette — asfalto + rosso corsa + lime fantasy + oro podio */
+  --bg:        oklch(0.13 0.005 250);
+  --surface:   oklch(0.17 0.006 250);
+  --surface-2: oklch(0.21 0.008 250);
+  --surface-3: oklch(0.26 0.01 250);
+  --hairline:  oklch(0.32 0.012 250 / 0.7);
+  --hairline-bright: oklch(0.42 0.015 250);
+
+  --text:       oklch(0.97 0.005 80);
+  --text-dim:   oklch(0.70 0.012 250);
+  --text-faint: oklch(0.50 0.014 250);
+
+  --accent:        oklch(0.66 0.23 25);            /* rosso corsa */
+  --accent-soft:   oklch(0.66 0.23 25 / 0.16);
+  --accent-glow:   oklch(0.66 0.23 25 / 0.45);
+  --lime:          oklch(0.86 0.20 130);           /* fantasy / signal */
+  --lime-soft:     oklch(0.86 0.20 130 / 0.18);
+  --gold:          oklch(0.83 0.16 86);            /* podio P1 */
+  --silver:        oklch(0.75 0.01 250);           /* silver rider */
+  --bronze:        oklch(0.65 0.10 50);
+
+  /* Type */
+  --f-display: 'Archivo', system-ui, sans-serif;
+  --f-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 14px;
+
+  --shadow-card: 0 1px 0 oklch(1 0 0 / 0.05) inset, 0 12px 24px -16px oklch(0 0 0 / 0.8);
+}
+
+html, body { height:100%; background:var(--bg); }
+body {
+  color: var(--text);
+  font-family: var(--f-display);
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* App shell — mobile-first centered */
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  padding-bottom: 80px;
+  position: relative;
+  /* sottile pattern racing — strisce diagonali sullo sfondo */
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 0%, oklch(0.18 0.02 25 / 0.4), transparent 70%),
+    var(--bg);
+}
+
+/* ─── Topbar sticky ─── */
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  padding: 14px 20px 12px;
+  background: linear-gradient(180deg, var(--bg) 70%, transparent);
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 12px;
+}
+.topbar-l { display: flex; flex-direction: column; }
+.eyebrow {
+  font-family: var(--f-mono);
+  font-size: 10px; font-weight: 500;
+  letter-spacing: 0.18em;
+  color: var(--text-faint);
+  text-transform: uppercase;
+}
+.title {
+  font-family: var(--f-display);
+  font-weight: 900;
+  font-size: 32px;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  font-style: italic;
+}
+.live-dot {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--f-mono);
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+  text-transform: uppercase;
+  padding: 6px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 100px;
+  background: var(--accent-soft);
+}
+.live-dot::before {
+  content: ''; width:6px; height:6px; border-radius:50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 0 var(--accent-glow);
+  animation: pulse 1.4s ease-out infinite;
+}
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 var(--accent-glow); }
+  70%  { box-shadow: 0 0 0 10px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* ─── Screen switching + entry ─── */
+.screen { display: none; padding: 0 20px; }
+.screen.is-active {
+  display: block;
+  animation: screen-in 380ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+@keyframes screen-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+/* Stagger nascita card al primo paint del tab attivo — gestito da JS
+   tramite la classe .anim-in (più affidabile che CSS pure su display toggle). */
+.screen .anim-in {
+  animation: rise 520ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+.screen .anim-in:nth-child(1) { animation-delay: 20ms; }
+.screen .anim-in:nth-child(2) { animation-delay: 90ms; }
+.screen .anim-in:nth-child(3) { animation-delay: 160ms; }
+.screen .anim-in:nth-child(4) { animation-delay: 230ms; }
+.screen .anim-in:nth-child(5) { animation-delay: 300ms; }
+.screen .anim-in:nth-child(n+6) { animation-delay: 360ms; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Rispetta la preferenza di sistema: niente animazioni → tutto subito visibile.
+   Necessario anche per ambienti CI/screenshot dove reduced-motion è forzato. */
+@media (prefers-reduced-motion: reduce) {
+  .screen .anim-in,
+  .screen.is-active,
+  .stripe,
+  .live-dot::before,
+  .cal-row--active .cal-dot {
+    animation: none !important;
+  }
+  .screen .anim-in { opacity: 1; transform: none; }
+}
+
+/* ─── Card base ─── */
+.card {
+  position: relative;
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  padding: 16px 18px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+/* hairline highlight in alto (riflesso metallico) */
+.card::before {
+  content: ''; position: absolute; left: 14px; right: 14px; top: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.18) 30%, oklch(1 0 0 / 0.18) 70%, transparent);
+}
+
+.card-h {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px; gap: 12px;
+}
+.card-t {
+  font-family: var(--f-mono);
+  font-size: 10px; font-weight: 500;
+  letter-spacing: 0.16em;
+  color: var(--text-faint);
+  text-transform: uppercase;
+}
+.card-meta {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+}
+
+/* ─── Hero NEXT GP card ─── */
+.hero {
+  background:
+    radial-gradient(ellipse 100% 80% at 100% 0%, var(--accent-soft), transparent 60%),
+    linear-gradient(180deg, oklch(0.20 0.012 25), var(--surface));
+  border-radius: var(--r-lg);
+  padding: 20px 20px 22px;
+  margin-bottom: 14px;
+  position: relative;
+  overflow: hidden;
+}
+/* strisce diagonali tipo guard-rail in basso a destra */
+.hero::after {
+  content: '';
+  position: absolute; right: -30px; bottom: -30px; width: 160px; height: 160px;
+  background: repeating-linear-gradient(
+    45deg,
+    oklch(0.30 0.02 25 / 0.4) 0 8px,
+    transparent 8px 18px
+  );
+  transform: rotate(0deg);
+  pointer-events: none;
+  mask: radial-gradient(circle at 0% 0%, transparent 30%, black 80%);
+}
+.hero-r {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 10px;
+}
+.hero-round {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.hero-flag {
+  font-size: 16px;
+  filter: drop-shadow(0 1px 2px oklch(0 0 0 / 0.4));
+}
+.hero-name {
+  font-family: var(--f-display);
+  font-weight: 900;
+  font-style: italic;
+  font-size: 38px;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+.hero-circuit {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 18px;
+  letter-spacing: 0.01em;
+}
+.cd {
+  display: flex; align-items: flex-start; gap: 6px;
+  position: relative;
+}
+.cd-u { display: flex; flex-direction: column; align-items: center; }
+.cd-n {
+  font-family: var(--f-mono);
+  font-weight: 700;
+  font-size: 38px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(180deg, oklch(0.99 0 0), oklch(0.78 0.005 250));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  padding: 4px 0;
+}
+.cd-l {
+  font-family: var(--f-mono);
+  font-size: 9px;
+  color: var(--text-faint);
+  letter-spacing: 0.18em;
+  margin-top: 2px;
+  text-transform: uppercase;
+}
+.cd-s {
+  font-family: var(--f-mono);
+  font-size: 32px;
+  color: var(--text-faint);
+  font-weight: 300;
+  padding: 2px 4px;
+  opacity: 0.5;
+}
+
+/* ─── Rider plate row ─── */
+.row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.row:last-child { border-bottom: none; }
+.row:first-child { padding-top: 4px; }
+
+.plate {
+  width: 38px; height: 38px;
+  background: var(--surface-2);
+  border-radius: 6px;
+  display: grid; place-items: center;
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-style: italic;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  flex-shrink: 0;
+  position: relative;
+}
+.plate--gold {
+  background: linear-gradient(135deg, var(--gold), oklch(0.65 0.13 70));
+  color: oklch(0.18 0.02 60);
+}
+.plate--silver {
+  background: linear-gradient(135deg, var(--silver), oklch(0.55 0.008 250));
+  color: oklch(0.18 0.005 250);
+}
+.plate--bronze {
+  background: linear-gradient(135deg, var(--bronze), oklch(0.45 0.08 40));
+  color: oklch(0.95 0 0);
+}
+.plate-pos {
+  position: absolute; top: -6px; left: -6px;
+  width: 18px; height: 18px;
+  background: var(--bg);
+  border: 1px solid var(--hairline-bright);
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--f-mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.row-m { flex: 1; min-width: 0; }
+.row-name {
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.005em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.row-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.row-pts {
+  font-family: var(--f-mono);
+  font-weight: 600;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+}
+.row.is-leader .row-pts { color: var(--gold); }
+.row .pts-sub {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  margin-top: 2px;
+  text-align: right;
+}
+.injured { color: var(--accent); font-size: 10px; }
+
+/* ─── Leader Fantasy callout ─── */
+.leader-call {
+  position: relative;
+  background: linear-gradient(135deg, oklch(0.20 0.04 130 / 0.7), var(--surface));
+  border-radius: var(--r-lg);
+  padding: 16px 18px 18px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+  box-shadow: var(--shadow-card);
+}
+.leader-call:active { transform: scale(0.98); }
+.leader-call::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--lime);
+}
+.leader-call::after {
+  /* checkered flag accent */
+  content: ''; position: absolute; right: -10px; top: -10px; width: 80px; height: 80px;
+  background:
+    repeating-conic-gradient(from 0deg at 0 0, var(--lime) 0% 25%, transparent 0% 50%);
+  background-size: 8px 8px;
+  opacity: 0.08;
+  pointer-events: none;
+}
+.leader-call-h {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
+.leader-call-name {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 18px;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  margin-bottom: 2px;
+}
+.leader-call-num {
+  font-family: var(--f-mono);
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 1;
+  color: var(--lime);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+}
+.leader-call-meta {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-family: var(--f-mono);
+  letter-spacing: 0.04em;
+  margin-top: 4px;
+}
+.leader-call-arrow {
+  font-family: var(--f-mono);
+  font-size: 16px;
+  color: var(--lime);
+}
+
+/* ─── Big stat (used in calendar/cards) ─── */
+.big-num {
+  font-family: var(--f-display);
+  font-weight: 900;
+  font-style: italic;
+  font-size: 28px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* ─── Standings segment toggle ─── */
+.seg {
+  display: flex; gap: 0;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--hairline);
+}
+.seg-btn {
+  background: none; border: none; cursor: pointer;
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-faint);
+  padding: 10px 0;
+  margin-right: 22px;
+  letter-spacing: 0.02em;
+  position: relative;
+  text-transform: uppercase;
+}
+.seg-btn.is-active { color: var(--text); }
+.seg-btn.is-active::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -1px;
+  height: 2px; background: var(--accent);
+}
+
+/* ─── Calendar timeline ─── */
+.cal-row {
+  display: flex; gap: 14px;
+  padding: 12px 0;
+  position: relative;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+.cal-row:active { background: var(--surface); border-radius: 6px; }
+.cal-rail {
+  width: 14px; display: flex; flex-direction: column; align-items: center;
+  flex-shrink: 0;
+  padding-top: 6px;
+}
+.cal-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  flex-shrink: 0;
+  z-index: 1;
+}
+.cal-line {
+  width: 1px;
+  flex: 1;
+  background: var(--hairline);
+  margin-top: 4px;
+  min-height: 14px;
+}
+.cal-row:last-child .cal-line { display: none; }
+.cal-row--done .cal-dot { background: var(--lime); }
+.cal-row--active .cal-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+  animation: pulse 1.6s ease-out infinite;
+}
+.cal-row--next .cal-dot { background: var(--text); }
+.cal-body { flex: 1; min-width: 0; padding: 2px 0 6px; }
+.cal-meta {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--text-faint);
+  margin-bottom: 3px;
+  text-transform: uppercase;
+}
+.cal-name {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-style: italic;
+  font-size: 18px;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+.cal-circuit {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+.cal-row--done .cal-name { color: var(--text-dim); }
+.cal-row--active .cal-name { color: var(--accent); }
+.tag {
+  display: inline-block;
+  font-family: var(--f-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.tag--live { background: var(--accent); color: white; }
+.tag--done { background: var(--lime-soft); color: var(--lime); }
+
+/* ─── GP chip rail (Fantasy) ─── */
+.gp-rail {
+  display: flex; gap: 6px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  margin: 0 -20px 14px;
+  padding: 6px 20px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.gp-rail::-webkit-scrollbar { display: none; }
+.gp-chip {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-family: var(--f-display);
+  display: flex; flex-direction: column; align-items: center;
+  min-width: 64px;
+  gap: 3px;
+  color: var(--text-dim);
+  transition: all 180ms ease;
+  position: relative;
+}
+.gp-chip-flag { font-size: 16px; line-height: 1; }
+.gp-chip-r {
+  font-family: var(--f-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.gp-chip-name {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  font-style: italic;
+}
+.gp-chip.is-active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+.gp-chip--season { min-width: 72px; }
+.gp-chip--season .gp-chip-flag { font-size: 14px; }
+
+/* ─── Fantasy season table ─── */
+.f-subtitle {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.f-stake {
+  background: var(--surface);
+  border-radius: var(--r-md);
+  padding: 4px 8px;
+  font-size: 10px;
+  color: var(--text-faint);
+}
+.f-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--f-mono);
+  font-size: 12px;
+  margin-bottom: 14px;
+}
+.f-tbl th {
+  text-align: right;
+  font-family: var(--f-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: var(--text-faint);
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--hairline);
+  text-transform: uppercase;
+}
+.f-tbl th:first-child { text-align: left; padding-left: 14px; }
+.f-tbl th:last-child { padding-right: 14px; }
+.f-tbl td {
+  padding: 10px 4px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--text-dim);
+}
+.f-tbl tr:last-child td { border-bottom: none; }
+.f-tbl td.user {
+  text-align: left;
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-style: italic;
+  font-size: 14px;
+  color: var(--text);
+  padding-left: 14px;
+}
+.f-tbl td.tot {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+  padding-right: 14px;
+}
+.f-tbl tr.is-leader td.user { color: var(--gold); }
+.f-tbl tr.is-leader td.tot { color: var(--gold); }
+.f-tbl tr.is-leader td .pos {
+  color: var(--gold);
+  font-weight: 700;
+}
+.pos {
+  display: inline-block;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-right: 8px;
+  width: 14px;
+  font-weight: 600;
+}
+
+/* ─── Player card (vista per GP) ─── */
+.p-card {
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  margin-bottom: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  position: relative;
+}
+.p-card::before {
+  content: ''; position: absolute; left: 14px; right: 14px; top: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.18) 30%, oklch(1 0 0 / 0.18) 70%, transparent);
+}
+.p-card.is-leader { background: linear-gradient(180deg, oklch(0.22 0.06 86 / 0.4), var(--surface) 30%); }
+
+.p-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px 12px;
+  gap: 12px;
+}
+.p-id {
+  display: flex; align-items: center; gap: 10px;
+  min-width: 0; flex: 1;
+}
+.p-rank {
+  font-family: var(--f-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 22px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.p-card.is-leader .p-rank { color: var(--gold); }
+.p-name {
+  font-family: var(--f-display);
+  font-weight: 900;
+  font-style: italic;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.p-value {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  margin-top: 2px;
+  letter-spacing: 0.04em;
+}
+.p-total {
+  text-align: right;
+  flex-shrink: 0;
+}
+.p-total-num {
+  font-family: var(--f-mono);
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+.p-card.is-leader .p-total-num { color: var(--gold); }
+.p-total-lbl {
+  font-family: var(--f-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.p-body { padding: 0 6px 6px; }
+.p-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--f-mono);
+  font-size: 12px;
+}
+.p-tbl th {
+  text-align: right;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  padding: 6px 6px;
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  text-transform: uppercase;
+}
+.p-tbl th:first-child { text-align: left; padding-left: 14px; }
+.p-tbl th:last-child { padding-right: 14px; }
+.p-tbl td {
+  padding: 7px 6px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  border-bottom: 1px solid oklch(from var(--hairline) l c h / 0.3);
+}
+.p-tbl tr:last-child td { border-bottom: none; }
+.p-tbl td:first-child {
+  text-align: left;
+  font-family: var(--f-display);
+  font-weight: 700;
+  color: var(--text);
+  font-size: 13px;
+  padding-left: 14px;
+  display: flex; align-items: center; gap: 6px;
+}
+.p-tbl td:last-child {
+  padding-right: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.p-tbl tr.silver td:first-child { color: var(--silver); }
+.p-tbl tr.silver td { color: oklch(from var(--text-dim) l c h / 0.7); }
+.p-tbl tr.silver td:last-child { color: var(--silver); }
+.p-tbl tr.const td:first-child,
+.p-tbl tr.squad td:first-child { font-size: 12px; font-weight: 600; }
+.p-tbl tr.const td:first-child { color: var(--text-dim); }
+.p-tbl tr.squad td:first-child { color: var(--text-dim); }
+.p-tbl tr.total td {
+  border-top: 2px solid var(--hairline-bright);
+  font-weight: 700;
+  color: var(--text);
+  padding-top: 9px;
+  padding-bottom: 12px;
+}
+.p-tbl tr.total td:first-child {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.p-tbl tr.total td:last-child {
+  color: var(--lime);
+  font-size: 14px;
+}
+.p-tbl .star-g { color: var(--gold); font-size: 10px; }
+.p-tbl .star-s { color: var(--silver); font-size: 10px; }
+.p-tbl .ico { font-size: 10px; opacity: 0.7; }
+
+.boost-tag {
+  display: inline-block;
+  font-family: var(--f-mono);
+  font-size: 8px;
+  font-weight: 700;
+  color: oklch(0.18 0.02 60);
+  background: var(--gold);
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.1em;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* ─── Bottom navigation ─── */
+.bnav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  max-width: 480px;
+  margin: 0 auto;
+  background: oklch(from var(--bg) l c h / 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--hairline);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.bnav-btn {
+  background: none; border: none; cursor: pointer;
+  padding: 10px 0 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  font-family: var(--f-display);
+  color: var(--text-faint);
+  transition: color 150ms ease;
+  position: relative;
+}
+.bnav-btn.is-active { color: var(--text); }
+.bnav-btn.is-active::before {
+  content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 28px; height: 2px;
+  background: var(--accent);
+  border-radius: 0 0 2px 2px;
+}
+.bnav-icon { width: 22px; height: 22px; display: grid; place-items: center; }
+.bnav-icon svg { width: 22px; height: 22px; }
+.bnav-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ─── Loading / empty ─── */
+.skel {
+  background: linear-gradient(90deg, var(--surface), var(--surface-2), var(--surface));
+  background-size: 200% 100%;
+  border-radius: 6px;
+  animation: shimmer 1.4s linear infinite;
+}
+@keyframes shimmer {
+  from { background-position: 0% 0%; }
+  to   { background-position: -200% 0%; }
+}
+.empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-faint);
+  font-size: 13px;
+  font-family: var(--f-mono);
+  letter-spacing: 0.06em;
+}
+
+/* ─── Race stripe accent (used across cards) ─── */
+.stripe {
+  height: 3px;
+  background: linear-gradient(90deg,
+    transparent 0%, transparent 15%,
+    var(--accent) 15%, var(--accent) 30%,
+    transparent 30%, transparent 55%,
+    var(--lime) 55%, var(--lime) 62%,
+    transparent 62%);
+  background-size: 200% 100%;
+  animation: stripe-pan 4s linear infinite;
+  margin-bottom: 14px;
+  border-radius: 2px;
+  opacity: 0.6;
+}
+@keyframes stripe-pan {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+.fade-pad { height: 24px; }
+
+.ptr {
+  position: fixed; top: 0; left: 0; right: 0;
+  max-width: 480px; margin: 0 auto;
+  height: 0; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg);
+  z-index: 200;
+  transition: height 200ms ease;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  letter-spacing: 0.1em;
+}
+.ptr-spinner {
+  width: 18px; height: 18px;
+  border: 2px solid var(--hairline);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  margin-right: 8px;
+}
+.ptr-spinner.is-spinning { animation: spin 600ms linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.freshness {
+  position: fixed; top: 60px; right: 20px;
+  max-width: 480px;
+  font-family: var(--f-mono);
+  font-size: 9px;
+  color: var(--text-faint);
+  letter-spacing: 0.08em;
+  z-index: 51;
+  opacity: 0.6;
+}
+
+.news-h { display: flex; align-items: center; justify-content: space-between; margin: 20px 0 12px; }
+.news-h-t { font-family: var(--f-mono); font-size: 10px; font-weight: 500; letter-spacing: 0.16em; color: var(--text-faint); text-transform: uppercase; }
+.news-h-src { font-family: var(--f-mono); font-size: 9px; color: var(--text-faint); letter-spacing: 0.08em; }
+
+.news-card {
+  display: flex; gap: 12px;
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  padding: 12px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 150ms ease, background 150ms ease;
+  position: relative;
+}
+.news-card:active { transform: scale(0.98); background: var(--surface-2); }
+.news-card::before {
+  content: ''; position: absolute; left: 12px; right: 12px; top: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.12) 30%, oklch(1 0 0 / 0.12) 70%, transparent);
+}
+
+.news-img {
+  width: 72px; height: 72px;
+  border-radius: var(--r-md);
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--surface-2);
+}
+.news-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.news-title {
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.news-meta {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  letter-spacing: 0.06em;
+  margin-top: auto;
+}
+.news-more {
+  text-align: center;
+  padding: 8px;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+</style>
+</head>
+<body>
+
+<div class="ptr" id="ptr"><div class="ptr-spinner" id="ptr-spinner"></div><span id="ptr-text">Aggiorna</span></div>
+<div class="app">
+  <header class="topbar">
+    <div class="topbar-l">
+      <span class="eyebrow" id="topbar-eyebrow">STAGIONE 2026</span>
+      <h1 class="title" id="topbar-title">Box Box</h1>
+    </div>
+    <div id="topbar-r"></div>
+  </header>
+
+  <main>
+    <section class="screen is-active" id="s-home" data-stagger></section>
+    <section class="screen" id="s-standings" data-stagger></section>
+    <section class="screen" id="s-cal" data-stagger></section>
+    <section class="screen" id="s-fantasy" data-stagger></section>
+    <section class="screen" id="s-other" data-stagger></section>
+  </main>
+
+  <nav class="bnav" id="bnav">
+    <button class="bnav-btn is-active" data-tab="home">
+      <span class="bnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg></span>
+      <span class="bnav-lbl">Home</span>
+    </button>
+    <button class="bnav-btn" data-tab="standings">
+      <span class="bnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v4a6 6 0 0 1-12 0z"/><path d="M4 4h2v2a2 2 0 0 1-2 2zM20 4h-2v2a2 2 0 0 0 2 2z"/><path d="M9 14h6l-1 6h-4z"/></svg></span>
+      <span class="bnav-lbl">Piloti</span>
+    </button>
+    <button class="bnav-btn" data-tab="cal">
+      <span class="bnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span>
+      <span class="bnav-lbl">Calendario</span>
+    </button>
+    <button class="bnav-btn" data-tab="fantasy">
+      <span class="bnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></span>
+      <span class="bnav-lbl">Fantasy</span>
+    </button>
+    <button class="bnav-btn" data-tab="other">
+      <span class="bnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
+      <span class="bnav-lbl">Altre</span>
+    </button>
+  </nav>
+</div>
+
+<script>
+/* ─────────────────────────────────────────────────────────
+   Box Box — racing app logic
+   ───────────────────────────────────────────────────────── */
+const FLAGS = {
+  THA:'🇹🇭', BRA:'🇧🇷', USA:'🇺🇸', QAT:'🇶🇦', SPA:'🇪🇸', FRA:'🇫🇷',
+  GBR:'🇬🇧', ITA:'🇮🇹', NED:'🇳🇱', GER:'🇩🇪', CZE:'🇨🇿', AUT:'🇦🇹',
+  HUN:'🇭🇺', CAT:'🇪🇸', RSM:'🇸🇲', JPN:'🇯🇵', INA:'🇮🇩', AUS:'🇦🇺',
+  MAL:'🇲🇾', POR:'🇵🇹', VAL:'🇪🇸', ARA:'🇪🇸'
+};
+const flagOf = (e) => FLAGS[(e.shortName||'').toUpperCase()] || '🏁';
+const monthsIT = ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
+const fmtDate = (iso) => {
+  const d = new Date(iso);
+  return d.getDate() + ' ' + monthsIT[d.getMonth()];
+};
+const trim = (s) => (s || '').trim();
+
+const DATA = {};
+let currentTab = 'home';
+let currentGp = 'season';
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const ms = Date.now() - new Date(dateStr).getTime();
+  if (ms < 0) return 'ora';
+  const min = Math.floor(ms / 60000);
+  if (min < 60) return min + ' min fa';
+  const h = Math.floor(min / 60);
+  if (h < 24) return h + 'h fa';
+  const d = Math.floor(h / 24);
+  return d + 'g fa';
+}
+
+async function load() {
+  try {
+    const [riders, events, constructors, squads, breakdown, allTeams, news, otherCats] = await Promise.all([
+      fetch('data/riders.json').then(r => r.json()),
+      fetch('data/events.json').then(r => r.json()),
+      fetch('data/constructors.json').then(r => r.json()),
+      fetch('data/squads.json').then(r => r.json()),
+      fetch('data/breakdown.json').then(r => r.json()),
+      fetch('data/all-teams.json').then(r => r.json()).catch(() => null),
+      fetch('data/news.json').then(r => r.json()).catch(() => null),
+      fetch('data/other-categories.json').then(r => r.json()).catch(() => null),
+    ]);
+    DATA.riders = riders;
+    DATA.events = events.slice().sort((a,b) => (a.order||a.id) - (b.order||b.id));
+    DATA.constructors = constructors;
+    DATA.squads = squads;
+    DATA.breakdown = breakdown;
+    DATA.allTeams = allTeams;
+    DATA.news = news;
+    DATA.otherCategories = otherCats;
+    DATA.riderById = Object.fromEntries(riders.map(r => [r.id, r]));
+    DATA.constById = Object.fromEntries(constructors.map(c => [c.id, c]));
+    DATA.squadById = Object.fromEntries(squads.map(s => [s.id, s]));
+    renderAll();
+    setupNav();
+    /* Pick last completed event for fantasy by default */
+    const completedDescending = DATA.events
+      .filter(e => DATA.breakdown.byEvent && DATA.breakdown.byEvent[e.id])
+      .sort((a,b) => (b.order||b.id) - (a.order||a.id));
+    if (completedDescending.length) currentGp = String(completedDescending[0].id);
+    renderFantasy();
+  } catch (err) {
+    console.error(err);
+    document.getElementById('s-home').innerHTML =
+      '<div class="empty">Errore di caricamento dati.<br>Verifica i file in /data/.</div>';
+  }
+}
+
+/* ─ Helpers ─ */
+function topRiders(n) {
+  return DATA.riders
+    .filter(r => r.status !== 'disqualified')
+    .sort((a,b) => (b.stats?.totalPoints||0) - (a.stats?.totalPoints||0))
+    .slice(0, n);
+}
+function activePlayers() {
+  /* Solo giocatori con breakdown reale (escludo placeholder vuoti) */
+  return Object.values(DATA.breakdown.players || {})
+    .filter(p => p.overallPoints != null && p.overallPoints > 0)
+    .sort((a,b) => b.overallPoints - a.overallPoints);
+}
+function lastCompletedEvent() {
+  const bdEvents = Object.keys(DATA.breakdown.events || {}).map(Number);
+  if (!bdEvents.length) return null;
+  const maxId = Math.max(...bdEvents);
+  return DATA.events.find(e => e.id === maxId);
+}
+function nextScheduledEvent() {
+  return DATA.events
+    .filter(e => effectiveStatus(e) !== 'complete' && effectiveStatus(e) !== 'active')
+    .sort((a,b) => new Date(a.dateStart) - new Date(b.dateStart))[0];
+}
+function effectiveStatus(e) {
+  if (e.status === 'active' && e.dateEnd) {
+    const endPlus6h = new Date(e.dateEnd).getTime() + 6 * 3600000;
+    if (Date.now() > endPlus6h) return 'complete';
+  }
+  return e.status;
+}
+
+function activeEvent() {
+  return DATA.events.find(e => effectiveStatus(e) === 'active');
+}
+
+/* ─ Countdown ticker ─ */
+let cdTimer = null;
+function startCountdown(targetIso) {
+  stopCountdown();
+  const tick = () => {
+    const ms = new Date(targetIso).getTime() - Date.now();
+    if (ms < 0) { stopCountdown(); return; }
+    const d = Math.floor(ms / 86400000);
+    const h = Math.floor((ms % 86400000) / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    const cd = document.getElementById('cd');
+    if (!cd) { stopCountdown(); return; }
+    cd.innerHTML =
+      `<div class="cd-u"><div class="cd-n">${String(d).padStart(2,'0')}</div><div class="cd-l">Giorni</div></div>` +
+      `<div class="cd-s">:</div>` +
+      `<div class="cd-u"><div class="cd-n">${String(h).padStart(2,'0')}</div><div class="cd-l">Ore</div></div>` +
+      `<div class="cd-s">:</div>` +
+      `<div class="cd-u"><div class="cd-n">${String(m).padStart(2,'0')}</div><div class="cd-l">Min</div></div>` +
+      `<div class="cd-s">:</div>` +
+      `<div class="cd-u"><div class="cd-n">${String(s).padStart(2,'0')}</div><div class="cd-l">Sec</div></div>`;
+  };
+  tick();
+  cdTimer = setInterval(tick, 1000);
+}
+function stopCountdown() {
+  if (cdTimer) { clearInterval(cdTimer); cdTimer = null; }
+}
+
+/* ─ Topbar dynamics ─ */
+function setTopbar(eyebrow, title, right) {
+  document.getElementById('topbar-eyebrow').textContent = eyebrow;
+  document.getElementById('topbar-title').textContent = title;
+  document.getElementById('topbar-r').innerHTML = right || '';
+}
+
+/* ═════════════════════════════════════════════════════════
+   HOME
+   ═════════════════════════════════════════════════════════ */
+function renderHome() {
+  const root = document.getElementById('s-home');
+  const active = activeEvent();
+  const next = active ? null : nextScheduledEvent();
+  const last = lastCompletedEvent();
+  const top3 = topRiders(3);
+  const leader = activePlayers()[0];
+  const secondPts = activePlayers()[1]?.overallPoints ?? 0;
+
+  let h = '';
+
+  /* Hero: prossimo GP (o attivo) */
+  const hero = active || next;
+  if (hero) {
+    const liveTag = hero.status === 'active' ? '<span class="tag tag--live">LIVE</span>' : '';
+    h += `
+      <div class="hero">
+        <div class="hero-r">
+          <span class="hero-round">Round ${hero.order || hero.id}</span>
+          <span class="hero-flag">${flagOf(hero)}</span>
+          ${liveTag}
+        </div>
+        <div class="hero-name">${hero.displayedName.trim()}</div>
+        <div class="hero-circuit">${hero.circuit}</div>
+        ${hero.status !== 'active' ? `<div class="cd" id="cd"></div>` :
+          `<div class="cd"><div class="cd-u"><div class="cd-n" style="color:var(--accent);background:none;-webkit-text-fill-color:var(--accent)">IN CORSO</div><div class="cd-l">${fmtDate(hero.dateStart)} – ${fmtDate(hero.dateEnd)}</div></div></div>`}
+      </div>
+    `;
+    if (hero.status !== 'active') setTimeout(() => startCountdown(hero.dateStart), 50);
+    else stopCountdown();
+  }
+
+  /* Top 3 piloti — affiancati */
+  h += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">`;
+  /* Top 3 Stagione */
+  h += `<div class="card" style="margin-bottom:0"><div class="card-h"><span class="card-t">Top 3 Stagione</span></div>`;
+  top3.forEach((r, i) => {
+    const team = DATA.constById[r.constructorId]?.name || '';
+    const plateCls = i === 0 ? 'plate plate--gold' : i === 1 ? 'plate plate--silver' : 'plate plate--bronze';
+    const injured = r.status === 'injured' ? ' <span class="injured">●</span>' : '';
+    h += `
+      <div class="row ${i === 0 ? 'is-leader' : ''}">
+        <div class="${plateCls}"><span>${r.number || r.id}</span></div>
+        <div class="row-m">
+          <div class="row-name">${r.firstName} ${r.lastName}${injured}</div>
+          <div class="row-sub">${team}</div>
+        </div>
+        <div class="row-pts">${r.stats?.totalPoints || 0}</div>
+      </div>
+    `;
+  });
+  h += `</div>`;
+  /* Top 3 Ultimo GP */
+  if (last) {
+    const lastResults = DATA.riders
+      .filter(r => r.stats?.events?.[last.id])
+      .map(r => ({ r, e: r.stats.events[last.id] }))
+      .sort((a,b) => (b.e.finalPoints || 0) - (a.e.finalPoints || 0))
+      .slice(0, 3);
+    h += `<div class="card" style="margin-bottom:0"><div class="card-h">
+      <span class="card-t">${flagOf(last)} · Gara</span>
+      <span class="card-meta">${last.displayedName.trim()}</span>
+    </div>`;
+    lastResults.forEach((x, i) => {
+      const plateCls = i === 0 ? 'plate plate--gold' : i === 1 ? 'plate plate--silver' : 'plate plate--bronze';
+      h += `
+        <div class="row">
+          <div class="${plateCls}"><span>${x.r.number || x.r.id}</span></div>
+          <div class="row-m">
+            <div class="row-name">${x.r.firstName} ${x.r.lastName}</div>
+            <div class="row-sub">${DATA.constById[x.r.constructorId]?.name || ''}</div>
+          </div>
+          <div class="row-pts">${x.e.finalPoints || 0}<div class="pts-sub">pt gara</div></div>
+        </div>
+      `;
+    });
+    h += `</div>`;
+  } else {
+    h += `<div class="card" style="margin-bottom:0"><div class="card-h"><span class="card-t">Ultimo GP</span></div><div class="empty" style="padding:16px">Nessun GP completato.</div></div>`;
+  }
+  h += `</div>`; /* fine grid */
+
+  /* Leader Fantasy */
+  if (leader) {
+    h += `
+      <div class="leader-call" data-go="fantasy">
+        <div class="leader-call-h">
+          <div class="card-t">⚡ Fantasy · Leader</div>
+          <span class="leader-call-arrow">→</span>
+        </div>
+        <div class="leader-call-name">@${leader.displayName}</div>
+        <div style="display:flex;align-items:baseline;gap:6px">
+          <span class="leader-call-num">${leader.overallPoints}</span>
+          <span style="font-family:var(--f-mono);font-size:11px;color:var(--text-faint);letter-spacing:.12em">PT</span>
+        </div>
+        <div class="leader-call-meta">
+          <span>+${(leader.overallPoints - secondPts).toFixed(1)} dal 2°</span>
+          <span>Valore team €${(leader.teamValue/1e6).toFixed(1)}M</span>
+        </div>
+      </div>
+    `;
+  }
+
+  /* News */
+  if (DATA.news?.items?.length) {
+    const newsItems = DATA.news.items.slice(0, 6);
+    h += `<div class="news-h"><span class="news-h-t">Ultime notizie</span><span class="news-h-src">${DATA.news.source || 'motorsport.com'}</span></div>`;
+    newsItems.forEach(n => {
+      const ago = timeAgo(n.pubDate);
+      const cats = (n.categories || []).filter(c => c !== 'MotoGP').slice(0,1).join('');
+      h += `<a class="news-card" href="${n.link}" target="_blank" rel="noopener">
+        ${n.image ? `<img class="news-img" src="${n.image}" alt="" loading="lazy">` : ''}
+        <div class="news-body">
+          <div class="news-title">${n.title}</div>
+          <div class="news-meta">${ago}${cats ? ' · ' + cats : ''}</div>
+        </div>
+      </a>`;
+    });
+    if (DATA.news.items.length > 6) {
+      h += `<div class="news-more" id="news-more">Altre ${DATA.news.items.length - 6} notizie ▾</div>`;
+    }
+  }
+
+  h += `<div class="fade-pad"></div>`;
+  root.innerHTML = h;
+  animateChildren(root);
+
+  /* deep link */
+  root.querySelector('.leader-call')?.addEventListener('click', () => switchTab('fantasy'));
+
+  /* expand news */
+  const moreBtn = root.querySelector('#news-more');
+  if (moreBtn && DATA.news?.items) {
+    moreBtn.addEventListener('click', () => {
+      const extra = DATA.news.items.slice(6);
+      let eh = '';
+      extra.forEach(n => {
+        const ago = timeAgo(n.pubDate);
+        const cats = (n.categories || []).filter(c => c !== 'MotoGP').slice(0,1).join('');
+        eh += `<a class="news-card" href="${n.link}" target="_blank" rel="noopener">
+          ${n.image ? `<img class="news-img" src="${n.image}" alt="" loading="lazy">` : ''}
+          <div class="news-body">
+            <div class="news-title">${n.title}</div>
+            <div class="news-meta">${ago}${cats ? ' · ' + cats : ''}</div>
+          </div>
+        </a>`;
+      });
+      moreBtn.insertAdjacentHTML('beforebegin', eh);
+      moreBtn.remove();
+    });
+  }
+}
+
+/* ═════════════════════════════════════════════════════════
+   CAMPIONATO (PILOTI / COSTRUTTORI / TEAM)
+   ═════════════════════════════════════════════════════════ */
+let standingsView = 'riders';
+function renderStandings() {
+  const root = document.getElementById('s-standings');
+  const segHtml = `
+    <div class="seg">
+      <button class="seg-btn ${standingsView==='riders'?'is-active':''}" data-sv="riders">Piloti</button>
+      <button class="seg-btn ${standingsView==='constructors'?'is-active':''}" data-sv="constructors">Costruttori</button>
+      <button class="seg-btn ${standingsView==='squads'?'is-active':''}" data-sv="squads">Team</button>
+    </div>
+  `;
+  let body = '';
+  if (standingsView === 'riders') {
+    const list = DATA.riders
+      .filter(r => r.status !== 'disqualified')
+      .sort((a,b) => (b.stats?.totalPoints||0) - (a.stats?.totalPoints||0));
+    const leaderPts = list[0]?.stats?.totalPoints || 0;
+    body = `<div class="card" style="padding:8px 14px">`;
+    list.forEach((r, i) => {
+      const team = DATA.constById[r.constructorId]?.name || '';
+      const pts = r.stats?.totalPoints || 0;
+      const gap = i === 0 ? 'P1' : '-' + (leaderPts - pts);
+      const plateCls = i === 0 ? 'plate plate--gold' : i === 1 ? 'plate plate--silver' : i === 2 ? 'plate plate--bronze' : 'plate';
+      const injured = r.status === 'injured' ? ' <span class="injured" title="infortunato">●</span>' : '';
+      body += `
+        <div class="row ${i===0?'is-leader':''}">
+          <div class="${plateCls}">
+            <span class="plate-pos">${i+1}</span>
+            <span>${r.number || r.id}</span>
+          </div>
+          <div class="row-m">
+            <div class="row-name">${r.firstName} ${r.lastName}${injured}</div>
+            <div class="row-sub">${team}</div>
+          </div>
+          <div class="row-pts">${pts}<div class="pts-sub">${gap}</div></div>
+        </div>
+      `;
+    });
+    body += `</div>`;
+  } else if (standingsView === 'constructors') {
+    const list = (DATA.constructors||[])
+      .map(c => ({...c, total: Object.values(c.stats?.events||{}).reduce((s,e)=>s+(e.points||0),0)}))
+      .sort((a,b)=> b.total - a.total);
+    const leaderPts = list[0]?.total || 0;
+    body = `<div class="card" style="padding:8px 14px">`;
+    list.forEach((c, i) => {
+      const plateCls = i === 0 ? 'plate plate--gold' : i === 1 ? 'plate plate--silver' : i === 2 ? 'plate plate--bronze' : 'plate';
+      body += `
+        <div class="row ${i===0?'is-leader':''}">
+          <div class="${plateCls}"><span>${i+1}</span></div>
+          <div class="row-m">
+            <div class="row-name">${c.name}</div>
+            <div class="row-sub">${(c.stats?.events?.length||Object.keys(c.stats?.events||{}).length)} GP</div>
+          </div>
+          <div class="row-pts">${c.total}<div class="pts-sub">${i===0?'P1':'-' + (leaderPts - c.total)}</div></div>
+        </div>
+      `;
+    });
+    body += `</div>`;
+  } else if (standingsView === 'squads') {
+    const list = (DATA.squads||[])
+      .map(s => ({...s, total: Object.values(s.stats?.events||{}).reduce((sum,e)=>sum+(e.points||0),0)}))
+      .filter(s => s.total > 0)
+      .sort((a,b)=> b.total - a.total);
+    const leaderPts = list[0]?.total || 0;
+    body = `<div class="card" style="padding:8px 14px">`;
+    list.forEach((s, i) => {
+      const plateCls = i === 0 ? 'plate plate--gold' : i === 1 ? 'plate plate--silver' : i === 2 ? 'plate plate--bronze' : 'plate';
+      body += `
+        <div class="row ${i===0?'is-leader':''}">
+          <div class="${plateCls}"><span>${i+1}</span></div>
+          <div class="row-m">
+            <div class="row-name">${s.name}</div>
+            <div class="row-sub">Valore €${(s.cost/1e6).toFixed(1)}M</div>
+          </div>
+          <div class="row-pts">${s.total}<div class="pts-sub">${i===0?'P1':'-' + (leaderPts - s.total)}</div></div>
+        </div>
+      `;
+    });
+    body += `</div>`;
+  }
+
+  root.innerHTML = segHtml + body + `<div class="fade-pad"></div>`;
+  animateChildren(root);
+  root.querySelectorAll('.seg-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      standingsView = b.dataset.sv;
+      renderStandings();
+    });
+  });
+}
+
+/* ═════════════════════════════════════════════════════════
+   CALENDARIO
+   ═════════════════════════════════════════════════════════ */
+function renderCalendar() {
+  const root = document.getElementById('s-cal');
+  let h = '';
+  const completedCount = DATA.events.filter(e => effectiveStatus(e) === 'complete').length;
+  h += `<div class="card-h" style="margin-bottom:12px">
+    <span class="card-t">${completedCount}/${DATA.events.length} disputati</span>
+    <span class="card-meta">Italia/Roma</span>
+  </div>`;
+
+  DATA.events.forEach((e, i) => {
+    const es = effectiveStatus(e);
+    const cls = es === 'complete' ? 'cal-row--done'
+              : es === 'active'  ? 'cal-row--active'
+              : i === completedCount ? 'cal-row--next'
+              : '';
+    const tag = es === 'active' ? '<span class="tag tag--live">Live</span>'
+              : es === 'complete' ? '<span class="tag tag--done">✓</span>'
+              : '';
+    h += `
+      <div class="cal-row ${cls}">
+        <div class="cal-rail">
+          <div class="cal-dot"></div>
+          <div class="cal-line"></div>
+        </div>
+        <div class="cal-body">
+          <div class="cal-meta">${flagOf(e)} R${e.order||e.id} · ${fmtDate(e.dateStart)}</div>
+          <div class="cal-name">${e.displayedName.trim()}${tag}</div>
+          <div class="cal-circuit">${e.circuit}</div>
+        </div>
+      </div>
+    `;
+  });
+
+  h += `<div class="fade-pad"></div>`;
+  root.innerHTML = h;
+  animateChildren(root);
+}
+
+/* ═════════════════════════════════════════════════════════
+   FANTASY
+   ═════════════════════════════════════════════════════════ */
+function renderFantasy() {
+  const root = document.getElementById('s-fantasy');
+  const players = activePlayers();
+  const completed = DATA.events
+    .filter(e => DATA.breakdown.byEvent && DATA.breakdown.byEvent[e.id]);
+
+  let h = '';
+  /* GP selector */
+  h += `<div class="gp-rail">
+    <div class="gp-chip gp-chip--season ${currentGp==='season'?'is-active':''}" data-gp="season">
+      <div class="gp-chip-flag">🏆</div>
+      <div class="gp-chip-r">TUTTI</div>
+      <div class="gp-chip-name">STAG</div>
+    </div>`;
+  completed.forEach(e => {
+    h += `<div class="gp-chip ${String(currentGp)===String(e.id)?'is-active':''}" data-gp="${e.id}">
+      <div class="gp-chip-flag">${flagOf(e)}</div>
+      <div class="gp-chip-r">R${e.order||e.id}</div>
+      <div class="gp-chip-name">${e.shortName||e.displayedName.slice(0,3).toUpperCase()}</div>
+    </div>`;
+  });
+  h += `</div>`;
+
+  if (currentGp === 'season') {
+    h += renderSeasonView(players);
+  } else {
+    h += renderEventView(Number(currentGp), players);
+  }
+  h += `<div class="fade-pad"></div>`;
+  root.innerHTML = h;
+  animateChildren(root);
+
+  root.querySelectorAll('.gp-chip').forEach(c => {
+    c.addEventListener('click', () => {
+      currentGp = c.dataset.gp === 'season' ? 'season' : c.dataset.gp;
+      renderFantasy();
+    });
+  });
+}
+
+function renderSeasonView(players) {
+  const leader = players[0];
+  if (!leader) return '<div class="empty">Nessun dato fantasy disponibile.</div>';
+  const second = players[1]?.overallPoints ?? 0;
+
+  let h = '';
+  h += `<div class="f-subtitle">
+    <span>Classifica generale</span>
+    <span class="f-stake">${players.length} giocatori</span>
+  </div>`;
+
+  h += `<div class="card" style="padding:0;overflow:hidden">
+    <table class="f-tbl">
+      <thead><tr>
+        <th>Giocatore</th>
+        <th>Q</th><th>Sprint</th><th>Gara</th><th>Bonus</th><th>Tot</th>
+      </tr></thead>
+      <tbody>`;
+  players.forEach((p, i) => {
+    h += `<tr class="${i===0?'is-leader':''}">
+      <td class="user"><span class="pos">${i+1}</span>@${p.displayName}</td>
+      <td>${p.season?.q ?? 0}</td>
+      <td>${p.season?.sprint ?? 0}</td>
+      <td>${p.season?.race ?? 0}</td>
+      <td>${p.season?.extra ?? 0}</td>
+      <td class="tot">${p.overallPoints}</td>
+    </tr>`;
+  });
+  h += `</tbody></table></div>`;
+
+  const completedGPs = DATA.events.filter(e => DATA.breakdown.byEvent && DATA.breakdown.byEvent[e.id]);
+
+  h += `<div class="f-subtitle" style="margin-top:16px"><span>Andamento per GP</span></div>`;
+  players.forEach((p, i) => {
+    const barMax = leader.overallPoints || 1;
+    const pct = Math.round((p.overallPoints / barMax) * 100);
+    const gap = i === 0 ? '' : ` <span style="color:var(--text-faint);font-size:11px">(-${(leader.overallPoints - p.overallPoints).toFixed(1)})</span>`;
+
+    h += `<div class="card" style="padding:12px 14px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:var(--f-mono);font-size:12px;color:${i===0?'var(--gold)':'var(--text-faint)'};font-weight:700;width:18px">${i+1}</span>
+          <span style="font-family:var(--f-display);font-weight:800;font-style:italic;font-size:15px;${i===0?'color:var(--gold)':''}">@${p.displayName}</span>
+        </div>
+        <span style="font-family:var(--f-mono);font-weight:700;font-size:16px;${i===0?'color:var(--gold)':''}">${p.overallPoints}${gap}</span>
+      </div>
+      <div style="display:flex;gap:2px;height:20px;margin-bottom:4px">`;
+
+    completedGPs.forEach(ev => {
+      const evData = p.events?.[ev.id];
+      const evPts = evData?.total || 0;
+      const maxEvPts = Math.max(...players.map(pl => pl.events?.[ev.id]?.total || 0), 1);
+      const barH = Math.max(4, Math.round((evPts / maxEvPts) * 20));
+      /* Colore basato sulla posizione in quel GP */
+      const gpStandings = (DATA.breakdown.byEvent?.[ev.id]?.standings) || [];
+      const gpPos = gpStandings.findIndex(s => s.displayName === p.displayName);
+      const color = gpPos === 0 ? 'var(--gold)' : gpPos === 1 ? 'var(--silver)' : gpPos === 2 ? 'var(--bronze)' : 'var(--surface-3)';
+      const medals = ['🥇','🥈','🥉',''];
+      h += `<div style="flex:1;display:flex;align-items:flex-end" title="${ev.displayedName}: ${gpPos >= 0 ? (gpPos+1)+'° posto' : '—'} (${evPts}pt)">
+        <div style="width:100%;height:${barH}px;background:${color};border-radius:2px"></div>
+      </div>`;
+    });
+
+    h += `</div>
+      <div style="display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:9px;color:var(--text-faint);letter-spacing:.06em">
+        <span>Q: ${p.season?.q ?? 0}</span>
+        <span>Sprint: ${p.season?.sprint ?? 0}</span>
+        <span>Gara: ${p.season?.race ?? 0}</span>
+        <span>Bonus: ${p.season?.extra ?? 0}</span>
+        <span>Team: €${(p.teamValue/1e6).toFixed(1)}M</span>
+      </div>
+    </div>`;
+  });
+
+  return h;
+}
+
+function renderEventView(evId, players) {
+  const ev = DATA.breakdown.byEvent[evId];
+  const evMeta = DATA.events.find(e => e.id === evId);
+  if (!ev || !ev.standings?.length) {
+    return '<div class="empty">Nessun dato per questo GP.</div>';
+  }
+  const teams = DATA.allTeams?.teams?.[String(evId)] || {};
+
+  let h = '';
+  /* Header GP */
+  h += `<div class="f-subtitle">
+    <span>${flagOf(evMeta)} ${evMeta.displayedName.trim()} · ${fmtDate(evMeta.dateStart)}</span>
+    <span class="f-stake">R${evMeta.order||evMeta.id}</span>
+  </div>`;
+
+  /* Card per giocatore */
+  ev.standings.forEach((p, i) => {
+    const t = teams[p.displayName];
+    h += `<div class="p-card ${i===0?'is-leader':''}">
+      <div class="p-head">
+        <div class="p-id">
+          <div class="p-rank">${i+1}</div>
+          <div style="min-width:0">
+            <div class="p-name">@${p.displayName}</div>
+            ${t?`<div class="p-value">Valore squad €${(t.value/1e6).toFixed(1)}M</div>`:''}
+          </div>
+        </div>
+        <div class="p-total">
+          <div class="p-total-num">${p.total}</div>
+          <div class="p-total-lbl">PUNTI</div>
+        </div>
+      </div>`;
+
+    if (t) {
+      h += `<div class="p-body"><table class="p-tbl">
+        <thead><tr>
+          <th>Selezione</th>
+          <th>Q</th><th>Sprint</th><th>Gara</th><th>Tot</th>
+        </tr></thead>
+        <tbody>`;
+
+      let sumQ=0, sumS=0, sumR=0, sumT=0;
+
+      /* Gold riders */
+      (t.riders || []).forEach(rid => {
+        const r = DATA.riderById[rid];
+        const e = r?.stats?.events?.[evId];
+        if (!r) return;
+        const isBoosted = (t.boosters||[]).some(b => b.boosterType==='rider' && b.details?.riderId===rid);
+        if (!e) {
+          h += `<tr>
+            <td><span class="star-g">★</span>${r.firstName} ${r.lastName}${isBoosted?'<span class="boost-tag">2X</span>':''}</td>
+            <td>—</td><td>—</td><td>—</td><td>—</td>
+          </tr>`;
+          return;
+        }
+        const q = (e.q2Points || e.q1Points || 0);
+        const sp = e.sprintPoints || 0;
+        const ra = e.finalPoints || 0;
+        const tot = e.points || 0;
+        sumQ += q; sumS += sp; sumR += ra; sumT += tot;
+        h += `<tr>
+          <td><span class="star-g">★</span>${r.firstName} ${r.lastName}${isBoosted?'<span class="boost-tag">2X</span>':''}</td>
+          <td>${q}</td><td>${sp}</td><td>${ra}</td><td>${tot}</td>
+        </tr>`;
+      });
+
+      /* Silver riders (50%) */
+      (t.ridersSilver || []).forEach(rid => {
+        const r = DATA.riderById[rid];
+        const e = r?.stats?.events?.[evId];
+        if (!r) return;
+        if (!e) {
+          h += `<tr class="silver">
+            <td><span class="star-s">☆</span>${r.firstName} ${r.lastName}</td>
+            <td>—</td><td>—</td><td>—</td><td>—</td>
+          </tr>`;
+          return;
+        }
+        const q = (e.q2Points || e.q1Points || 0) / 2;
+        const sp = (e.sprintPoints || 0) / 2;
+        const ra = (e.finalPoints || 0) / 2;
+        const tot = (e.points || 0) / 2;
+        sumQ += q; sumS += sp; sumR += ra; sumT += tot;
+        h += `<tr class="silver">
+          <td><span class="star-s">☆</span>${r.firstName} ${r.lastName}</td>
+          <td>${fmt(q)}</td><td>${fmt(sp)}</td><td>${fmt(ra)}</td><td>${fmt(tot)}</td>
+        </tr>`;
+      });
+
+      /* Constructor */
+      (t.constructors || []).forEach(cid => {
+        const c = DATA.constById[cid];
+        const pts = c?.stats?.events?.[evId]?.points || 0;
+        sumT += pts;
+        h += `<tr class="const">
+          <td><span class="ico">🏭</span>${c?.name || 'Costruttore'}</td>
+          <td>—</td><td>—</td><td>—</td><td>${fmt(pts)}</td>
+        </tr>`;
+      });
+
+      /* Squad */
+      (t.squads || []).forEach(sid => {
+        const s = DATA.squadById[sid];
+        const pts = s?.stats?.events?.[evId]?.points || 0;
+        sumT += pts;
+        h += `<tr class="squad">
+          <td><span class="ico">🏁</span>${s?.name || 'Team'}</td>
+          <td>—</td><td>—</td><td>—</td><td>${fmt(pts)}</td>
+        </tr>`;
+      });
+
+      /* Totale */
+      h += `<tr class="total">
+        <td>Totale</td>
+        <td>${fmt(sumQ)}</td><td>${fmt(sumS)}</td><td>${fmt(sumR)}</td><td>${fmt(sumT)}</td>
+      </tr>`;
+
+      h += `</tbody></table></div>`;
+    } else {
+      h += `<div class="empty" style="padding:20px">Squad non disponibile.</div>`;
+    }
+
+    h += `</div>`;
+  });
+
+  return h;
+}
+
+const fmt = (n) => {
+  if (n == null) return '—';
+  const r = Math.round(n * 10) / 10;
+  return Number.isInteger(r) ? String(r) : r.toFixed(1);
+};
+
+/* ═════════════════════════════════════════════════════════
+   NAVIGAZIONE TAB
+   ═════════════════════════════════════════════════════════ */
+function switchTab(tab) {
+  if (tab === currentTab) return;
+  currentTab = tab;
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('is-active'));
+  document.querySelectorAll('.bnav-btn').forEach(b => b.classList.remove('is-active'));
+  const scr = document.getElementById('s-' + tab);
+  scr.classList.add('is-active');
+  document.querySelector('.bnav-btn[data-tab="'+tab+'"]').classList.add('is-active');
+
+  /* Topbar contestuale */
+  const titles = {
+    home: ['STAGIONE 2026', 'Box Box'],
+    standings: ['Campionato 2026', 'Classifica'],
+    cal: ['22 Gran Premi', 'Calendario'],
+    fantasy: ['Lega privata', 'Fantasy'],
+    other: ['Motorsport', 'Altre categorie']
+  };
+  setTopbar(titles[tab][0], titles[tab][1], '');
+  if (activeEvent()) {
+    document.getElementById('topbar-r').innerHTML = '<span class="live-dot">Live</span>';
+  }
+
+  /* Home: refresh countdown + content */
+  if (tab === 'home') renderHome();
+  else stopCountdown();
+
+  /* (re-)triggera lo stagger sui figli del tab attivo */
+  animateChildren(scr);
+}
+
+/* Aggiunge la classe .anim-in ai figli per far ripartire l'animazione di entrata.
+   Necessario perché animation: ... both su display:none non si avvia in Chrome
+   finché il display non torna visibile, e re-toggling della classe genitore non
+   re-triggera l'animazione. */
+function animateChildren(scr) {
+  const kids = [...scr.children];
+  kids.forEach(c => c.classList.remove('anim-in'));
+  /* force reflow per resettare lo stato dell'animazione */
+  void scr.offsetWidth;
+  kids.forEach(c => c.classList.add('anim-in'));
+}
+
+function setupNav() {
+  document.getElementById('bnav').addEventListener('click', e => {
+    const btn = e.target.closest('.bnav-btn');
+    if (btn) switchTab(btn.dataset.tab);
+  });
+}
+
+let currentOtherView = null; /* null = menu, oppure 'moto2','moto3','motoe','wsbk' */
+
+function renderOther() {
+  const root = document.getElementById('s-other');
+  
+  /* Se siamo dentro una vista categoria */
+  if (currentOtherView) {
+    renderOtherCategory(currentOtherView);
+    return;
+  }
+
+  const categories = [
+    { id: 'moto2', name: 'Moto2', icon: '🏍️', desc: 'Campionato 2026' },
+    { id: 'moto3', name: 'Moto3', icon: '🏍️', desc: 'Campionato 2026' },
+    { id: 'wsbk', name: 'WorldSBK', icon: '🌍', desc: 'Superbike 2026' },
+  ];
+
+  const links = [
+    { icon: '📊', name: 'Classifica MotoGP Live', url: 'https://www.motogp.com/en/results-and-statistics/2026/standings/motogp' },
+    { icon: '📅', name: 'Calendario MotoGP', url: 'https://www.motogp.com/en/calendar/2026' },
+    { icon: '📰', name: 'News Motorsport.com', url: 'https://www.motorsport.com/motogp/news/' },
+    { icon: '⚡', name: 'Fantasy MotoGP', url: 'https://fantasy.motogp.com/' },
+    { icon: '🏠', name: 'Box Box (GitHub)', url: 'https://github.com/your-org/boxbox' },
+  ];
+
+  let h = '';
+
+  h += `<div class="f-subtitle"><span>Classifiche altre categorie</span></div>`;
+  h += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">`;
+  categories.forEach(cat => {
+    h += `<div class="news-card" data-cat="${cat.id}" style="cursor:pointer;padding:16px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px">
+      <div style="font-size:28px">${cat.icon}</div>
+      <div class="news-title" style="font-size:15px">${cat.name}</div>
+      <div class="news-meta">${cat.desc}</div>
+    </div>`;
+  });
+  h += `</div>`;
+
+  h += `<div class="f-subtitle" style="margin-top:20px"><span>Link utili</span></div>`;
+  links.forEach(lnk => {
+    h += `<a href="${lnk.url}" target="_blank" rel="noopener" class="news-card" style="margin-bottom:6px;padding:10px 14px">
+      <div style="font-size:18px;flex-shrink:0">${lnk.icon}</div>
+      <div class="news-body" style="gap:0">
+        <div class="news-title" style="font-size:13px">${lnk.name}</div>
+      </div>
+      <div style="font-size:14px;color:var(--text-faint)">→</div>
+    </a>`;
+  });
+
+  h += `<div class="fade-pad"></div>`;
+  root.innerHTML = h;
+  animateChildren(root);
+
+  /* Click handler per categorie */
+  root.querySelectorAll('[data-cat]').forEach(el => {
+    el.addEventListener('click', () => {
+      currentOtherView = el.dataset.cat;
+      renderOther();
+    });
+  });
+}
+
+function renderOtherCategory(catId) {
+  const root = document.getElementById('s-other');
+  const names = { moto2:'Moto2', moto3:'Moto3', wsbk:'WorldSBK' };
+  const catName = names[catId] || catId;
+
+  /* Aggiorna topbar */
+  setTopbar(`${catName} 2026`, catName, '');
+
+  let h = '';
+  /* Back button */
+  h += `<div class="seg" style="margin-bottom:12px">
+    <button class="seg-btn is-active" id="back-other" style="margin-right:0">← Classifiche</button>
+  </div>`;
+
+  /* Ottieni dati categoria */
+  const catData = DATA.otherCategories?.categories?.[catId];
+  const riders = catData?.riders || [];
+  const fetchedAt = DATA.otherCategories?.fetchedAt || null;
+
+  if (riders.length > 0) {
+    h += `<div class="card" style="padding:0;overflow:hidden">
+      <table class="f-tbl">
+        <thead><tr>
+          <th>Pos</th><th>Pilota</th><th>Moto</th><th>Team</th><th>Pts</th>
+        </tr></thead>
+        <tbody>`;
+    riders.forEach((r, i) => {
+      const medal = r.pos === 1 ? '🥇' : r.pos === 2 ? '🥈' : r.pos === 3 ? '🥉' : '';
+      h += `<tr class="${i===0?'is-leader':''}">
+        <td class="user"><span class="pos">${r.pos}</span>${medal}</td>
+        <td>${r.rider}</td>
+        <td style="color:var(--text-dim);font-size:12px">${r.bike}</td>
+        <td style="color:var(--text-faint);font-size:11px">${r.team}</td>
+        <td class="tot">${r.totalPoints}</td>
+      </tr>`;
+    });
+    h += `</tbody></table></div>`;
+    if (fetchedAt) {
+      const d = new Date(fetchedAt);
+      h += `<div style="font-size:10px;color:var(--text-faint);margin-top:6px;text-align:center">Fonte: Wikipedia · aggiornato ${d.toLocaleDateString('it-IT')} ${d.toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit'})}</div>`;
+    }
+  } else {
+    h += `<div class="card"><div class="card-h"><span class="card-t">Classifica ${catName}</span></div>`;
+    h += `<div class="empty" style="padding:24px">
+      <div style="font-size:24px;margin-bottom:8px">🔌</div>
+      <div>Dati ${catName} non disponibili.</div>
+      <div style="font-size:12px;color:var(--text-faint);margin-top:6px">I dati vengono da Wikipedia. Se il campionato 2026 non è ancora iniziato, la pagina potrebbe non esistere.</div>
+    </div>`;
+    h += `</div>`;
+  }
+
+  h += `<div class="fade-pad"></div>`;
+  root.innerHTML = h;
+  animateChildren(root);
+
+  document.getElementById('back-other').addEventListener('click', () => {
+    currentOtherView = null;
+    renderOther();
+  });
+}
+
+function renderAll() {
+  renderHome();
+  renderStandings();
+  renderCalendar();
+  renderOther();
+  /* fantasy renderizzata dopo aver settato currentGp in load() */
+  if (activeEvent()) {
+    document.getElementById('topbar-r').innerHTML = '<span class="live-dot">Live</span>';
+  }
+}
+
+/* ═════════════════════════════════════════════════════════
+   PULL TO REFRESH
+   ═════════════════════════════════════════════════════════ */
+let ptrStartY = 0;
+let ptrActive = false;
+const PTR_THRESHOLD = 80;
+
+document.addEventListener('touchstart', e => {
+  if (window.scrollY === 0 && e.touches.length === 1) {
+    ptrStartY = e.touches[0].clientY;
+    ptrActive = true;
+  }
+}, { passive: true });
+
+document.addEventListener('touchmove', e => {
+  if (!ptrActive) return;
+  const dy = e.touches[0].clientY - ptrStartY;
+  if (dy > 0 && dy < 140 && window.scrollY === 0) {
+    const ptr = document.getElementById('ptr');
+    ptr.style.height = Math.min(dy * 0.6, 56) + 'px';
+    document.getElementById('ptr-text').textContent = dy > PTR_THRESHOLD ? 'Rilascia' : 'Aggiorna';
+  }
+}, { passive: true });
+
+document.addEventListener('touchend', () => {
+  if (!ptrActive) return;
+  ptrActive = false;
+  const ptr = document.getElementById('ptr');
+  const h = parseInt(ptr.style.height) || 0;
+  if (h > PTR_THRESHOLD * 0.6) {
+    ptr.style.height = '44px';
+    document.getElementById('ptr-spinner').classList.add('is-spinning');
+    document.getElementById('ptr-text').textContent = 'Caricamento...';
+    refreshData().finally(() => {
+      document.getElementById('ptr-spinner').classList.remove('is-spinning');
+      ptr.style.height = '0';
+    });
+  } else {
+    ptr.style.height = '0';
+  }
+});
+
+async function refreshData() {
+  try {
+    const [riders, events, constructors, squads, news, otherCats] = await Promise.all([
+      fetch('data/riders.json', { cache: 'no-store' }).then(r => r.json()),
+      fetch('data/events.json', { cache: 'no-store' }).then(r => r.json()),
+      fetch('data/constructors.json', { cache: 'no-store' }).then(r => r.json()),
+      fetch('data/squads.json', { cache: 'no-store' }).then(r => r.json()),
+      fetch('data/news.json', { cache: 'no-store' }).then(r => r.json()).catch(() => null),
+      fetch('data/other-categories.json', { cache: 'no-store' }).then(r => r.json()).catch(() => null),
+    ]);
+    DATA.riders = riders;
+    DATA.events = events.slice().sort((a,b) => (a.order||a.id) - (b.order||b.id));
+    DATA.constructors = constructors;
+    DATA.squads = squads;
+    DATA.riderById = Object.fromEntries(riders.map(r => [r.id, r]));
+    DATA.constById = Object.fromEntries(constructors.map(c => [c.id, c]));
+    DATA.squadById = Object.fromEntries(squads.map(s => [s.id, s]));
+    if (news) DATA.news = news;
+    if (otherCats) DATA.otherCategories = otherCats;
+
+    const bd = await fetch('data/breakdown.json', { cache: 'no-store' }).then(r => r.json()).catch(() => null);
+    if (bd) DATA.breakdown = bd;
+    const at = await fetch('data/all-teams.json', { cache: 'no-store' }).then(r => r.json()).catch(() => null);
+    if (at) DATA.allTeams = at;
+
+    renderAll();
+    if (currentTab === 'fantasy') renderFantasy();
+    updateFreshness();
+  } catch (err) {
+    console.error('Refresh fallito:', err);
+  }
+}
+
+/* ═════════════════════════════════════════════════════════
+   AUTO-REFRESH (dati pubblici durante weekend attivo)
+   ═════════════════════════════════════════════════════════ */
+let autoRefreshTimer = null;
+
+function scheduleAutoRefresh() {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+
+  const active = DATA.events?.find(e => e.status === 'active');
+  const now = new Date();
+
+  let shouldRefresh = false;
+
+  if (active) {
+    shouldRefresh = true;
+  } else {
+    const upcoming = DATA.events
+      ?.filter(e => e.status !== 'complete')
+      .sort((a,b) => new Date(a.dateStart) - new Date(b.dateStart))[0];
+    if (upcoming) {
+      const start = new Date(upcoming.dateStart);
+      const msUntil = start.getTime() - now.getTime();
+      const oneDayMs = 24 * 60 * 60 * 1000;
+      if (msUntil <= oneDayMs && msUntil > 0) shouldRefresh = true;
+    }
+  }
+
+  if (shouldRefresh) {
+    autoRefreshTimer = setInterval(() => refreshData(), 5 * 60 * 1000);
+  }
+}
+
+function updateFreshness() {
+  let el = document.getElementById('freshness');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'freshness';
+    el.className = 'freshness';
+    document.querySelector('.app').prepend(el);
+  }
+  const active = DATA.events?.find(e => e.status === 'active');
+  const autoOn = !!autoRefreshTimer;
+  el.textContent = active
+    ? (autoOn ? 'LIVE · auto-refresh 5min' : 'LIVE')
+    : 'Ultimo aggiornamento: ' + new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  scheduleAutoRefresh();
+}
+
+/* ═════════════════════════════════════════════════════════
+   SERVICE WORKER + PWA
+   ═════════════════════════════════════════════════════════ */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+/* go! */
+load().then(() => {
+  updateFreshness();
+  scheduleAutoRefresh();
+});
+</script>
+
+</body>
+</html>
