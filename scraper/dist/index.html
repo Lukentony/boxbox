@@ -1511,7 +1511,7 @@ function renderFantasy() {
     </div>`;
   completed.forEach(e => {
     const isLive = effectiveStatus(e) === 'active';
-    const liveR = '<span class=\"chip-dot\"></span>LIVE';
+    const liveR = '<span class="chip-dot"></span>LIVE';
     h += `<div class="gp-chip ${isLive?'gp-chip--live':''} ${String(currentGp)===String(e.id)?'is-active':''}" data-gp="${e.id}">
       <div class="gp-chip-flag">${flagOf(e)}</div>
       <div class="gp-chip-r">${isLive?liveR:'R'+(e.order||e.id)}</div>
@@ -1529,11 +1529,13 @@ function renderFantasy() {
   root.innerHTML = h;
   animateChildren(root);
 
-  root.querySelectorAll('.gp-chip').forEach(c => {
-    c.addEventListener('click', () => {
-      currentGp = c.dataset.gp === 'season' ? 'season' : c.dataset.gp;
+  const rail = root.querySelector('.gp-rail');
+  if (rail) rail.addEventListener('click', (ev) => {
+    const chip = ev.target.closest('.gp-chip');
+    if (chip) {
+      currentGp = chip.dataset.gp === 'season' ? 'season' : chip.dataset.gp;
       renderFantasy();
-    });
+    }
   });
 }
 
