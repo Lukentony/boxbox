@@ -1011,6 +1011,32 @@ body {
   letter-spacing: 0.1em;
   cursor: pointer;
 }
+
+/* ─── Settings ─── */
+.sett-card { padding: 0 !important; }
+.sett-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; cursor: pointer; gap: 12px;
+  border-bottom: 1px solid var(--hairline);
+}
+.sett-row:last-child { border-bottom: none; }
+.sett-row:active { background: var(--surface-2); }
+.sett-label { flex: 1; min-width: 0; }
+.sett-name  { font-weight: 700; font-size: 14px; color: var(--text); }
+.sett-desc  { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+.sett-toggle {
+  width: 44px; height: 26px; border-radius: 13px;
+  background: var(--surface-3); position: relative;
+  flex-shrink: 0; transition: background 200ms ease;
+}
+.sett-toggle.is-on { background: var(--accent); }
+.sett-thumb {
+  position: absolute; top: 3px; left: 3px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: white; box-shadow: 0 1px 3px oklch(0 0 0 / 0.4);
+  transition: transform 200ms ease;
+}
+.sett-toggle.is-on .sett-thumb { transform: translateX(18px); }
 </style>
 </head>
 <body>
@@ -1822,11 +1848,11 @@ function renderOther() {
   ];
 
   const links = [
-    { icon: '📊', name: 'Classifica MotoGP Live', url: 'https://www.motogp.com/en/results-and-statistics/2026/standings/motogp' },
-    { icon: '📅', name: 'Calendario MotoGP', url: 'https://www.motogp.com/en/calendar/2026' },
-    { icon: '📰', name: 'News Motorsport.com', url: 'https://www.motorsport.com/motogp/news/' },
+    { icon: '🏆', name: 'Classifica MotoGP 2026', url: 'https://www.motogp.com/en/standings' },
+    { icon: '📅', name: 'Calendario MotoGP 2026', url: 'https://www.motogp.com/en/calendar' },
+    { icon: '📰', name: 'Notizie MotoGP', url: 'https://it.motorsport.com/motogp/' },
     { icon: '⚡', name: 'Fantasy MotoGP', url: 'https://fantasy.motogp.com/' },
-    { icon: '🏠', name: 'Box Box (GitHub)', url: 'https://github.com/your-org/boxbox' },
+    { icon: '🐙', name: 'Box Box — GitHub', url: 'https://github.com/Lukentony/boxbox' },
   ];
 
   let h = '';
@@ -1853,6 +1879,19 @@ function renderOther() {
     </a>`;
   });
 
+  /* Sezione impostazioni */
+  const autoRefOn = localStorage.getItem('bbAutoRefresh') !== 'false';
+  h += `<div class="f-subtitle" style="margin-top:20px"><span>Impostazioni</span></div>`;
+  h += `<div class="card sett-card">`;
+  h += `<div class="sett-row" data-sett="autoRefresh">
+    <div class="sett-label">
+      <div class="sett-name">Auto-aggiornamento dati</div>
+      <div class="sett-desc">Ricarica i dati ogni 5 minuti durante i weekend GP</div>
+    </div>
+    <div class="sett-toggle ${autoRefOn ? 'is-on' : ''}"><div class="sett-thumb"></div></div>
+  </div>`;
+  h += `</div>`;
+
   h += `<div class="fade-pad"></div>`;
   root.innerHTML = h;
   animateChildren(root);
@@ -1862,6 +1901,19 @@ function renderOther() {
     el.addEventListener('click', () => {
       currentOtherView = el.dataset.cat;
       renderOther();
+    });
+  });
+
+  /* Click handler per settings */
+  root.querySelectorAll('.sett-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const key = row.dataset.sett;
+      if (key === 'autoRefresh') {
+        const current = localStorage.getItem('bbAutoRefresh') !== 'false';
+        localStorage.setItem('bbAutoRefresh', current ? 'false' : 'true');
+        scheduleAutoRefresh();
+        renderOther();
+      }
     });
   });
 }
@@ -2020,6 +2072,7 @@ let autoRefreshTimer = null;
 
 function scheduleAutoRefresh() {
   if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  if (localStorage.getItem('bbAutoRefresh') === 'false') return;
 
   const active = DATA.events?.find(e => e.status === 'active');
   const now = new Date();
