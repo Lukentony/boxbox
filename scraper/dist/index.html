@@ -589,6 +589,19 @@ body {
 }
 .gp-chip--season { min-width: 72px; }
 .gp-chip--season .gp-chip-flag { font-size: 14px; }
+.gp-chip--live { border-color: var(--accent); }
+.gp-chip--live .gp-chip-r { color: var(--accent); }
+.gp-chip--live.is-active .gp-chip-r { color: white; }
+.chip-dot {
+  display: inline-block; width: 5px; height: 5px;
+  background: currentColor; border-radius: 50%;
+  margin-right: 3px; vertical-align: middle;
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.7); }
+}
 
 /* ─── Fantasy season table ─── */
 .f-subtitle {
@@ -1496,9 +1509,11 @@ function renderFantasy() {
       <div class="gp-chip-name">STAG</div>
     </div>`;
   completed.forEach(e => {
-    h += `<div class="gp-chip ${String(currentGp)===String(e.id)?'is-active':''}" data-gp="${e.id}">
+    const isLive = effectiveStatus(e) === 'active';
+    const liveR = '<span class=\"chip-dot\"></span>LIVE';
+    h += `<div class="gp-chip ${isLive?'gp-chip--live':''} ${String(currentGp)===String(e.id)?'is-active':''}" data-gp="${e.id}">
       <div class="gp-chip-flag">${flagOf(e)}</div>
-      <div class="gp-chip-r">R${e.order||e.id}</div>
+      <div class="gp-chip-r">${isLive?liveR:'R'+(e.order||e.id)}</div>
       <div class="gp-chip-name">${e.shortName||e.displayedName.slice(0,3).toUpperCase()}</div>
     </div>`;
   });
@@ -1654,14 +1669,15 @@ function renderEventView(evId, players) {
           </tr>`;
           return;
         }
-        const q = (e.q2Points || e.q1Points || 0);
-        const sp = e.sprintPoints || 0;
-        const ra = e.finalPoints || 0;
-        const tot = e.points || 0;
+        const factor = isBoosted ? 2 : 1;
+        const q = (e.q2Points || e.q1Points || 0) * factor;
+        const sp = (e.sprintPoints || 0) * factor;
+        const ra = (e.finalPoints || 0) * factor;
+        const tot = (e.points || 0) * factor;
         sumQ += q; sumS += sp; sumR += ra; sumT += tot;
         h += `<tr>
           <td><span class="star-g">★</span>${r.firstName} ${r.lastName}${isBoosted?'<span class="boost-tag">2X</span>':''}</td>
-          <td>${q}</td><td>${sp}</td><td>${ra}</td><td>${tot}</td>
+          <td>${fmt(q)}</td><td>${fmt(sp)}</td><td>${fmt(ra)}</td><td>${fmt(tot)}</td>
         </tr>`;
       });
 

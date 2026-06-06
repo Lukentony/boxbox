@@ -12,15 +12,15 @@ const riderById  = Object.fromEntries(riders.map(r => [r.id, r]));
 const constrById = Object.fromEntries(constructs.map(c => [c.id, c]));
 const squadById  = Object.fromEntries(squadsJSON.map(s => [s.id, s]));
 
-const isEventDone = (ev) => {
+const isEventStarted = (ev) => {
   if (ev.status === 'complete') return true;
   if (ev.status === 'active' && ev.races?.length > 0) {
-    return ev.races.every(r => r.status === 'complete');
+    return true; // include active anche parziali
   }
   return false;
 };
 
-const completed = events.filter(isEventDone).sort((a, b) => a.order - b.order);
+const completed = events.filter(isEventStarted).sort((a, b) => a.order - b.order);
 const players = league.filter(p => p.overallPoints != null);
 
 const flags = {
@@ -69,6 +69,12 @@ for (const p of players) {
 
     (team.riders || []).forEach(rid => add(rid, 1));
     (team.ridersSilver || []).forEach(rid => add(rid, 0.5));
+    // Boosters: rider booster aggiunge ancora una volta i punti del pilota (2x totale)
+    (team.boosters || []).forEach(b => {
+      if (b.boosterType === 'rider' && b.details?.riderId) {
+        add(b.details.riderId, 1); // aggiunge 1x extra (il primo 1x è già contato sopra)
+      }
+    });
     (team.constructors || []).forEach(cid => { ex += constrById[cid]?.stats?.events?.[String(eid)]?.points || 0; });
     (team.squads || []).forEach(sid => { ex += squadById[sid]?.stats?.events?.[String(eid)]?.points || 0; });
 

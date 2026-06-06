@@ -62,15 +62,15 @@ async function main() {
 
   const eventsRes = await fetch(`${BASE}/json/fantasy/events.json`, { headers: HEADERS });
   const events = await eventsRes.json();
-  const isEventDone = (ev) => {
+  const isEventStarted = (ev) => {
     if (ev.status === 'complete') return true;
     if (ev.status === 'active' && ev.races?.length > 0) {
-      return ev.races.every(r => r.status === 'complete');
+      return true; // include active anche parziali
     }
     return false;
   };
 
-  const completedEvIds = events.filter(isEventDone).map(e => e.id);
+  const completedEvIds = events.filter(isEventStarted).map(e => e.id);
 
   writeFileSync(resolve(DIR, 'events.json'), JSON.stringify(events, null, 2));
   console.log(`${completedEvIds.length} GP completati: ${completedEvIds.join(', ')}`);
