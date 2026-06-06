@@ -1037,6 +1037,7 @@ body {
   transition: transform 200ms ease;
 }
 .sett-toggle.is-on .sett-thumb { transform: translateX(18px); }
+.sett-row--disabled { opacity: 0.45; pointer-events: none; }
 </style>
 </head>
 <body>
@@ -1890,6 +1891,22 @@ function renderOther() {
     </div>
     <div class="sett-toggle ${autoRefOn ? 'is-on' : ''}"><div class="sett-thumb"></div></div>
   </div>`;
+  const notifSupported = 'Notification' in window;
+  const notifPerm = notifSupported ? Notification.permission : 'unsupported';
+  const notifOn = notifPerm === 'granted' && localStorage.getItem('bbNotifications') === 'true';
+  const notifDesc = notifPerm === 'denied'
+    ? 'Bloccate dal browser — riabilitale nelle impostazioni del sito'
+    : notifPerm === 'unsupported'
+    ? 'Non supportate da questo browser'
+    : 'Avviso quando i punti vengono aggiornati durante il GP';
+  const notifDisabled = notifPerm === 'denied' || notifPerm === 'unsupported';
+  h += `<div class="sett-row${notifDisabled ? ' sett-row--disabled' : ''}" data-sett="notifications">
+    <div class="sett-label">
+      <div class="sett-name">Notifiche aggiornamenti</div>
+      <div class="sett-desc">${notifDesc}</div>
+    </div>
+    <div class="sett-toggle ${notifOn ? 'is-on' : ''}"><div class="sett-thumb"></div></div>
+  </div>`;
   h += `</div>`;
 
   h += `<div class="fade-pad"></div>`;
@@ -1913,6 +1930,21 @@ function renderOther() {
         localStorage.setItem('bbAutoRefresh', current ? 'false' : 'true');
         scheduleAutoRefresh();
         renderOther();
+      } else if (key === 'notifications') {
+        if (!('Notification' in window)) return;
+        if (Notification.permission === 'denied') return;
+        if (Notification.permission === 'default') {
+          Notification.requestPermission().then(() => {
+            if (Notification.permission === 'granted') {
+              localStorage.setItem('bbNotifications', 'true');
+            }
+            renderOther();
+          });
+        } else {
+          const cur = localStorage.getItem('bbNotifications') === 'true';
+          localStorage.setItem('bbNotifications', cur ? 'false' : 'true');
+          renderOther();
+        }
       }
     });
   });
@@ -2052,8 +2084,9 @@ async function refreshData() {
     if (news) DATA.news = news;
     if (otherCats) DATA.otherCategories = otherCats;
 
+    const oldBreakdown = DATA.breakdown;
     const bd = await fetch('data/breakdown.json', { cache: 'no-store' }).then(r => r.json()).catch(() => null);
-    if (bd) DATA.breakdown = bd;
+    if (bd) { checkAndNotify(oldBreakdown, bd); DATA.breakdown = bd; }
     const at = await fetch('data/all-teams.json', { cache: 'no-store' }).then(r => r.json()).catch(() => null);
     if (at) DATA.allTeams = at;
 
@@ -2062,6 +2095,48 @@ async function refreshData() {
     updateFreshness();
   } catch (err) {
     console.error('Refresh fallito:', err);
+  }
+}
+
+/* ═════════════════════════════════════════════════════════
+   NOTIFICHE LOCALI (Level 1 — Notification API)
+   ═════════════════════════════════════════════════════════ */
+function checkAndNotify(oldBd, newBd) {
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'granted') return;
+  if (localStorage.getItem('bbNotifications') !== 'true') return;
+  if (!oldBd || !newBd) return;
+
+  /* Trova l'evento attivo */
+  const activeEvent = DATA.events?.find(e => effectiveStatus(e) === 'active');
+  if (!activeEvent) return;
+  const evId = String(activeEvent.id);
+
+  const oldStandings = oldBd?.byEvent?.[evId]?.standings || [];
+  const newStandings = newBd?.byEvent?.[evId]?.standings || [];
+  if (!newStandings.length) return;
+
+  /* Confronta totali — notifica solo se cambiati */
+  const oldTotals = Object.fromEntries(oldStandings.map(p => [p.displayName, p.total ?? 0]));
+  const changed = newStandings.some(p => (oldTotals[p.displayName] ?? -1) !== (p.total ?? 0));
+  if (!changed) return;
+
+  const evName = newBd.byEvent?.[evId]?.eventName || activeEvent.name || 'GP';
+  const body = newStandings.map((p, i) => `${i+1}. ${p.displayName}: ${p.total ?? 0}pt`).join('
+');
+
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.ready.then(reg => {
+      reg.showNotification(`🏁 ${evName} — punti aggiornati`, {
+        body,
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+        tag: 'boxbox-update',
+        renotify: true,
+      });
+    }).catch(() => {});
+  } else {
+    try { new Notification(`🏁 ${evName} — punti aggiornati`, { body, icon: '/icon-192.png' }); } catch(e) {}
   }
 }
 
