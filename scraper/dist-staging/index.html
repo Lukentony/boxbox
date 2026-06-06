@@ -1484,6 +1484,8 @@ function renderCalendar() {
   const root = document.getElementById('s-cal');
   let h = '';
   const completedCount = DATA.events.filter(e => effectiveStatus(e) === 'complete').length;
+  const hasActiveEvent = DATA.events.some(e => effectiveStatus(e) === 'active');
+  const nextIdx = completedCount + (hasActiveEvent ? 1 : 0);
   h += `<div class="card-h" style="margin-bottom:12px">
     <span class="card-t">${completedCount}/${DATA.events.length} disputati</span>
     <span class="card-meta">Italia/Roma</span>
@@ -1493,7 +1495,7 @@ function renderCalendar() {
     const es = effectiveStatus(e);
     const cls = es === 'complete' ? 'cal-row--done'
               : es === 'active'  ? 'cal-row--active'
-              : i === completedCount ? 'cal-row--next'
+              : i === nextIdx ? 'cal-row--next'
               : '';
     const tag = es === 'active' ? '<span class="tag tag--live">Live</span>'
               : es === 'complete' ? '<span class="tag tag--done">✓</span>'
@@ -1554,6 +1556,10 @@ function renderFantasy() {
   h += `<div class="fade-pad"></div>`;
   root.innerHTML = h;
   animateChildren(root);
+
+  /* Porta il chip attivo al centro della rail */
+  const activeChip = root.querySelector('.gp-chip.is-active');
+  if (activeChip) activeChip.scrollIntoView({ behavior: 'instant', inline: 'center', block: 'nearest' });
 
   const rail = root.querySelector('.gp-rail');
   if (rail) rail.addEventListener('click', (ev) => {
@@ -1794,7 +1800,7 @@ function switchTab(tab) {
   const titles = {
     home: ['STAGIONE 2026', 'Box Box'],
     standings: ['Campionato 2026', 'Classifica'],
-    cal: ['22 Gran Premi', 'Calendario'],
+    cal: [`${DATA.events?.length ?? 22} Gran Premi`, 'Calendario'],
     fantasy: ['Lega privata', 'Fantasy'],
     other: ['Motorsport', 'Altre categorie']
   };
@@ -2048,12 +2054,20 @@ document.addEventListener('touchmove', e => {
   }
 }, { passive: true });
 
+function ptrReset() {
+  if (!ptrActive) return;
+  ptrActive = false;
+  document.getElementById('ptr').style.height = '0';
+}
+
+document.addEventListener('touchcancel', ptrReset);
+
 document.addEventListener('touchend', () => {
   if (!ptrActive) return;
   ptrActive = false;
   const ptr = document.getElementById('ptr');
   const h = parseInt(ptr.style.height) || 0;
-  if (h > PTR_THRESHOLD * 0.6) {
+  if (h >= PTR_THRESHOLD * 0.6) {
     ptr.style.height = '44px';
     document.getElementById('ptr-spinner').classList.add('is-spinning');
     document.getElementById('ptr-text').textContent = 'Caricamento...';
