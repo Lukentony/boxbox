@@ -1,5 +1,5 @@
-const CACHE_NAME = 'boxbox-v4';
-const SHELL = ['/', '/manifest.webmanifest'];
+const CACHE_NAME = 'boxbox-v5';
+const SHELL = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/favicon.ico'];
 const DATA_PREFIX = '/data/';
 const MAX_DATA_AGE = 5 * 60 * 1000;
 
@@ -39,12 +39,27 @@ async function networkFirstWithCache(request) {
     const res = await fetch(request);
     if (res.ok) {
       const cache = await caches.open(CACHE_NAME);
-      cache.put(request, res.clone());
+      // Aggiunge header Date per tracking età cache
+      const headers = new Headers(res.headers);
+      headers.set('sw-cached-at', Date.now().toString());
+      const cloned = new Response(await res.clone().blob(), { status: res.status, headers });
+      cache.put(request, cloned);
     }
     return res;
   } catch {
-    const cached = await caches.match(request);
-    if (cached) return cached;
+    const cache = await caches.open(CACHE_NAME);
+    const cached = await cache.match(request);
+    if (cached) {
+      const cachedAt = parseInt(cached.headers.get('sw-cached-at') || '0');
+      // Serve dalla cache solo se non troppo vecchia
+      if (cachedAt && (Date.now() - cachedAt) > MAX_DATA_AGE) {
+        // Dati stale: servi comunque (offline) ma con header di avviso
+        const headers = new Headers(cached.headers);
+        headers.set('sw-stale', 'true');
+        return new Response(await cached.clone().blob(), { status: cached.status, headers });
+      }
+      return cached;
+    }
     return new Response('{"error":"offline"}', {
       status: 503,
       headers: { 'Content-Type': 'application/json' }
