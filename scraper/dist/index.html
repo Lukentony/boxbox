@@ -2122,8 +2122,7 @@ function checkAndNotify(oldBd, newBd) {
   if (!changed) return;
 
   const evName = newBd.byEvent?.[evId]?.eventName || activeEvent.name || 'GP';
-  const body = newStandings.map((p, i) => `${i+1}. ${p.displayName}: ${p.total ?? 0}pt`).join('
-');
+  const body = newStandings.map((p, i) => `${i+1}. ${p.displayName}: ${p.total ?? 0}pt`).join('\n');
 
   if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
     navigator.serviceWorker.ready.then(reg => {
