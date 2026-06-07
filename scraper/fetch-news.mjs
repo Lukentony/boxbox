@@ -1,4 +1,4 @@
-import { writeFileSync } from 'fs';
+import { writeFileSync, readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -78,9 +78,36 @@ async function main() {
   const items = parseItems(xml);
   console.log(`${items.length} articoli`);
 
+  // Rileva GP imminente (48h) e tagga articoli correlati
+  let upcomingGP = null;
+  try {
+    const evs = JSON.parse(readFileSync(resolve(DIR, 'events.json'), 'utf-8'));
+    const nowMs = Date.now();
+    const nextEv = evs
+      .filter(e => e.status === 'scheduled' && e.dateStart)
+      .sort((a, b) => new Date(a.dateStart) - new Date(b.dateStart))[0];
+    if (nextEv) {
+      const ms = new Date(nextEv.dateStart) - nowMs;
+      if (ms > 0 && ms < 48 * 3_600_000) {
+        const name = (nextEv.displayedName || '').trim();
+        const short = (nextEv.shortName || '').toLowerCase();
+        upcomingGP = { name, shortName: nextEv.shortName, dateStart: nextEv.dateStart,
+                       hoursUntil: Math.round(ms / 3_600_000) };
+        const kw = name.toLowerCase();
+        items.forEach(item => {
+          const txt = (item.title + ' ' + item.description).toLowerCase();
+          item.gpRelated = txt.includes(kw) || (short && txt.includes(short));
+        });
+        items.sort((a, b) => (b.gpRelated ? 1 : 0) - (a.gpRelated ? 1 : 0));
+        console.log(`GP imminente: ${name} (${upcomingGP.hoursUntil}h al via)`);
+      }
+    }
+  } catch {}
+
   const output = {
     fetchedAt: new Date().toISOString(),
     source: 'motorsport.com IT',
+    upcomingGP,
     items,
   };
 

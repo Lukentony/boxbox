@@ -72,6 +72,22 @@ async function main() {
 
   const completedEvIds = events.filter(isEventStarted).map(e => e.id);
 
+  // Pre-show prossimo GP nelle 48h precedenti alla prima sessione
+  {
+    const PRE_SHOW_H = 48;
+    const nowMs = Date.now();
+    const nextEv = events
+      .filter(e => !isEventStarted(e) && e.status !== 'complete' && e.dateStart)
+      .sort((a, b) => new Date(a.dateStart) - new Date(b.dateStart))[0];
+    if (nextEv) {
+      const msUntil = new Date(nextEv.dateStart) - nowMs;
+      if (msUntil > 0 && msUntil < PRE_SHOW_H * 3_600_000) {
+        completedEvIds.push(nextEv.id);
+        console.log(`Pre-show: ${nextEv.displayedName?.trim()} tra ${Math.round(msUntil/3_600_000)}h`);
+      }
+    }
+  }
+
   writeFileSync(resolve(DIR, 'events.json'), JSON.stringify(events, null, 2));
   console.log(`${completedEvIds.length} GP completati: ${completedEvIds.join(', ')}`);
 

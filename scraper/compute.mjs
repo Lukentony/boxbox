@@ -21,6 +21,20 @@ const isEventStarted = (ev) => {
 };
 
 const completed = events.filter(isEventStarted).sort((a, b) => a.order - b.order);
+
+// Pre-show prossimo GP (stesso threshold di fetch-data.mjs)
+const PRE_SHOW_H = 48;
+const _nowMs = Date.now();
+const _nextSched = events
+  .filter(e => !isEventStarted(e) && e.status !== 'complete' && e.dateStart)
+  .sort((a, b) => new Date(a.dateStart) - new Date(b.dateStart))[0];
+const upcomingEv = (() => {
+  if (!_nextSched) return null;
+  const ms = new Date(_nextSched.dateStart) - _nowMs;
+  return (ms > 0 && ms < PRE_SHOW_H * 3_600_000) ? _nextSched : null;
+})();
+if (upcomingEv && !completed.find(e => e.id === upcomingEv.id)) completed.push(upcomingEv);
+
 const players = league.filter(p => p.overallPoints != null);
 
 const flags = {
@@ -111,7 +125,11 @@ for (const ev of completed) {
     .filter(p => p.events[ev.id])
     .map(p => ({ displayName: p.displayName, ...p.events[ev.id] }))
     .sort((a, b) => b.total - a.total);
-  byEvent[ev.id] = { eventId: ev.id, eventName: ev.displayedName, flag: flagOf(ev), standings: st };
+  byEvent[ev.id] = {
+    eventId: ev.id, eventName: ev.displayedName, flag: flagOf(ev),
+    ...(upcomingEv && ev.id === upcomingEv.id ? { upcoming: true, dateStart: ev.dateStart } : {}),
+    standings: st,
+  };
 }
 
 const output = {

@@ -592,6 +592,8 @@ body {
 .gp-chip--season .gp-chip-flag { font-size: 14px; }
 .gp-chip--live { border-color: var(--accent); }
 .gp-chip--live .gp-chip-r { color: var(--accent); }
+.gp-chip--upcoming { border-color: var(--text-faint); border-style: dashed; }
+.news-card--gp { border-left: 2px solid var(--accent); padding-left: 10px; }
 .gp-chip--live.is-active .gp-chip-r { color: white; }
 .chip-dot {
   display: inline-block; width: 5px; height: 5px;
@@ -1366,21 +1368,30 @@ function renderHome() {
 
   /* News */
   if (DATA.news?.items?.length) {
-    const newsItems = DATA.news.items.slice(0, 6);
-    h += `<div class="news-h"><span class="news-h-t">Ultime notizie</span><span class="news-h-src">${DATA.news.source || 'motorsport.com'}</span></div>`;
-    newsItems.forEach(n => {
+    const upGP = DATA.news.upcomingGP;
+    const gpNews   = upGP ? DATA.news.items.filter(n => n.gpRelated)  : [];
+    const restNews = upGP ? DATA.news.items.filter(n => !n.gpRelated) : DATA.news.items;
+    const mkCard = n => {
       const ago = timeAgo(n.pubDate);
-      const cats = (n.categories || []).filter(c => c !== 'MotoGP').slice(0,1).join('');
-      h += `<a class="news-card" href="${n.link}" target="_blank" rel="noopener">
-        ${n.image ? `<img class="news-img" src="${n.image}" alt="" loading="lazy">` : ''}
+      const cats = (n.categories||[]).filter(c=>c!=='MotoGP').slice(0,1).join('');
+      return `<a class="news-card${n.gpRelated?' news-card--gp':''}" href="${n.link}" target="_blank" rel="noopener">
+        ${n.image?`<img class="news-img" src="${n.image}" alt="" loading="lazy">`:''}
         <div class="news-body">
           <div class="news-title">${n.title}</div>
-          <div class="news-meta">${ago}${cats ? ' · ' + cats : ''}</div>
+          <div class="news-meta">${ago}${cats?' · '+cats:''}</div>
         </div>
       </a>`;
-    });
-    if (DATA.news.items.length > 6) {
-      h += `<div class="news-more" id="news-more">Altre ${DATA.news.items.length - 6} notizie ▾</div>`;
+    };
+    if (gpNews.length) {
+      h += `<div class="news-h"><span class="news-h-t">🏁 ${upGP.name}</span><span class="news-h-src">${upGP.hoursUntil}h al via</span></div>`;
+      gpNews.forEach(n => { h += mkCard(n); });
+    }
+    const shownRest = restNews.slice(0, gpNews.length ? 4 : 6);
+    const moreRest  = restNews.slice(gpNews.length ? 4 : 6);
+    h += `<div class="news-h"><span class="news-h-t">Ultime notizie</span><span class="news-h-src">${DATA.news.source||'motorsport.com'}</span></div>`;
+    shownRest.forEach(n => { h += mkCard(n); });
+    if (moreRest.length) {
+      h += `<div class="news-more" id="news-more">Altre ${moreRest.length} notizie ▾</div>`;
     }
   }
 
@@ -1395,7 +1406,8 @@ function renderHome() {
   const moreBtn = root.querySelector('#news-more');
   if (moreBtn && DATA.news?.items) {
     moreBtn.addEventListener('click', () => {
-      const extra = DATA.news.items.slice(6);
+      const _upGP = DATA.news.upcomingGP;
+      const extra = (_upGP ? DATA.news.items.filter(n=>!n.gpRelated) : DATA.news.items).slice(_upGP ? 4 : 6);
       let eh = '';
       extra.forEach(n => {
         const ago = timeAgo(n.pubDate);
@@ -1571,7 +1583,8 @@ function renderFantasy() {
   completed.forEach(e => {
     const isLive = effectiveStatus(e) === 'active';
     const liveR = '<span class="chip-dot"></span>LIVE';
-    h += `<div class="gp-chip ${isLive?'gp-chip--live':''} ${String(currentGp)===String(e.id)?'is-active':''}" data-gp="${e.id}">
+    const isUpcoming = DATA.breakdown.byEvent?.[e.id]?.upcoming;
+    h += `<div class="gp-chip ${isLive?'gp-chip--live':''} ${isUpcoming?'gp-chip--upcoming':''} ${String(currentGp)===String(e.id)?'is-active':''}" data-gp="${e.id}">
       <div class="gp-chip-flag">${flagOf(e)}</div>
       <div class="gp-chip-r">${isLive?liveR:'R'+(e.order||e.id)}</div>
       <div class="gp-chip-name">${e.shortName||e.displayedName.slice(0,3).toUpperCase()}</div>
@@ -1678,10 +1691,72 @@ function renderSeasonView(players) {
   return h;
 }
 
+function renderUpcomingEventView(evMeta, ev) {
+  const teams = DATA.allTeams?.teams?.[String(evMeta.id)] || {};
+  let h = '';
+  h += `<div class="f-subtitle">
+    <span>${flagOf(evMeta)} ${evMeta.displayedName.trim()}</span>
+    <span class="f-stake">R${evMeta.order || evMeta.id}</span>
+  </div>`;
+  h += `<div class="card" style="margin-bottom:12px">
+    <div class="card-h"><span class="card-t">🗓 Prossimo GP</span></div>
+    <div style="padding:0 16px 16px">
+      <div class="cd" id="cd"></div>
+      <div style="font-family:var(--f-mono);font-size:11px;color:var(--text-faint);margin-top:6px">
+        ${evMeta.circuit} · Prima sessione ${fmtDate(evMeta.dateStart)}
+      </div>
+    </div>
+  </div>`;
+  const playerNames = Object.keys(teams);
+  if (playerNames.length) {
+    playerNames.forEach(name => {
+      const t = teams[name];
+      if (!t) return;
+      h += `<div class="p-card"><div class="p-head"><div class="p-id"><div style="min-width:0">
+        <div class="p-name">@${name}</div>
+        <div class="p-value">Valore squad €${((t.value||0)/1e6).toFixed(1)}M</div>
+      </div></div></div><div class="p-body"><div style="padding:0 0 8px">`;
+      (t.riders||[]).forEach(rid => {
+        const r = DATA.riderById[rid]; if (!r) return;
+        const isBoosted = (t.boosters||[]).some(b=>b.boosterType==='rider'&&b.details?.riderId===rid);
+        const pts = r.stats?.totalPoints||0;
+        h += `<div class="row"><div class="plate plate--gold"><span>${r.number||'?'}</span></div>
+          <div class="row-m"><div class="row-name">${r.firstName} ${r.lastName}${isBoosted?'<span class="boost-tag">2X</span>':''}</div>
+          <div class="row-sub">${DATA.constById[r.constructorId]?.name||''}</div></div>
+          <div class="row-pts" style="font-size:12px">${pts}<div class="pts-sub">stagione</div></div></div>`;
+      });
+      (t.ridersSilver||[]).forEach(rid => {
+        const r = DATA.riderById[rid]; if (!r) return;
+        const pts = r.stats?.totalPoints||0;
+        h += `<div class="row silver"><div class="plate plate--silver"><span>${r.number||'?'}</span></div>
+          <div class="row-m"><div class="row-name">${r.firstName} ${r.lastName}</div>
+          <div class="row-sub">${DATA.constById[r.constructorId]?.name||''} · 50%</div></div>
+          <div class="row-pts" style="font-size:12px">${pts}<div class="pts-sub">stagione</div></div></div>`;
+      });
+      (t.constructors||[]).forEach(cid => {
+        const c = DATA.constById[cid]; if (!c) return;
+        h += `<div class="row"><div class="plate" style="background:var(--surface-3)"><span style="font-size:14px">🔧</span></div>
+          <div class="row-m"><div class="row-name">${c.name}</div><div class="row-sub">Costruttore</div></div></div>`;
+      });
+      (t.squads||[]).forEach(sid => {
+        const s = DATA.squadById[sid]; if (!s) return;
+        h += `<div class="row"><div class="plate" style="background:var(--surface-3)"><span style="font-size:14px">🏔</span></div>
+          <div class="row-m"><div class="row-name">${s.name}</div><div class="row-sub">Team</div></div></div>`;
+      });
+      h += `</div></div></div>`;
+    });
+  } else {
+    h += `<div class="empty">Dati squadra non ancora disponibili.</div>`;
+  }
+  setTimeout(() => startCountdown(evMeta.dateStart), 50);
+  return h;
+}
+
 function renderEventView(evId, players) {
   const ev = DATA.breakdown.byEvent[evId];
   const evMeta = DATA.events.find(e => e.id === evId);
   if (!evMeta) { root.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-dim)">Dati evento non disponibili</div>'; return; }
+  if (ev?.upcoming) return renderUpcomingEventView(evMeta, ev);
   if (!ev || !ev.standings?.length) {
     return '<div class="empty">Nessun dato per questo GP.</div>';
   }
