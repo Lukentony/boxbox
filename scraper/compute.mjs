@@ -104,44 +104,6 @@ for (const p of players) {
   };
 }
 
-// ── Fallback: usa lastEventPoints quando riders.json non ha finalPoints
-// (tipicamente 30-60 min dopo la gara, prima che l'API pubblica aggiorni)
-{
-  const lastEv = completed[completed.length - 1];
-  if (lastEv) {
-    const lastEvId = lastEv.id;
-    const lastEventMap = {};
-    for (const entry of league) {
-      if (entry.displayName && entry.lastEventPoints != null)
-        lastEventMap[entry.displayName] = entry.lastEventPoints;
-    }
-    // needsFallback = almeno un giocatore con race=0 ma lastEventPoints
-    //   significativamente maggiore di (q + sprint + extra)
-    const needsFallback = players.some(p => {
-      const ev = breakdown[p.displayName]?.events?.[lastEvId];
-      return ev && ev.race === 0 &&
-             (lastEventMap[p.displayName] || 0) > (ev.q + ev.sprint + ev.extra + 5);
-    });
-    if (needsFallback) {
-      console.log(`⚠️  riders.json lag rilevato: fallback lastEventPoints per ev ${lastEvId}`);
-      for (const p of players) {
-        const name = p.displayName;
-        const ev = breakdown[name]?.events?.[lastEvId];
-        const apiLast = lastEventMap[name];
-        if (!ev || apiLast == null) continue;
-        const raceEst = Math.max(0,
-          Math.round((apiLast - ev.q - ev.sprint - ev.extra) * 10) / 10);
-        if (raceEst > 0) {
-          breakdown[name].season.race =
-            Math.round((breakdown[name].season.race + raceEst) * 10) / 10;
-          ev.race  = raceEst;
-          ev.total = Math.round((ev.q + ev.sprint + raceEst + ev.extra) * 10) / 10;
-        }
-      }
-    }
-  }
-}
-
 const byEvent = {};
 for (const ev of completed) {
   const st = Object.values(breakdown)
