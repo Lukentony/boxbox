@@ -59,6 +59,7 @@ for (const p of players) {
       ra += (e.finalPoints || 0) * factor;
       ex += (e.fastestLapPoints || 0) * factor;
       ex += (e.riderOfTheRacePoints || 0) * factor;
+      ex += (e.perfectGPPoints || 0) * factor;
       ex += (e.topSpeedPoints || 0) * factor;
       ex += (e.circuitRecordPoints || 0) * factor;
       ex += (e.dnfPenaltyPoints || 0) * factor;
