@@ -78,7 +78,8 @@ async function main() {
   const items = parseItems(xml);
   console.log(`${items.length} articoli`);
 
-  // Rileva GP imminente (48h) e tagga articoli correlati
+  // Rileva GP imminente (24h) e tagga articoli correlati.
+  // Bugfix 2026-08-08 (Claude): era 48h, disallineato da compute.mjs/fetch-data.mjs (24h).
   let upcomingGP = null;
   try {
     const evs = JSON.parse(readFileSync(resolve(DIR, 'events.json'), 'utf-8'));
@@ -88,7 +89,7 @@ async function main() {
       .sort((a, b) => new Date(a.dateStart) - new Date(b.dateStart))[0];
     if (nextEv) {
       const ms = new Date(nextEv.dateStart) - nowMs;
-      if (ms > 0 && ms < 48 * 3_600_000) {
+      if (ms > 0 && ms < 24 * 3_600_000) {
         const name = (nextEv.displayedName || '').trim();
         const short = (nextEv.shortName || '').toLowerCase();
         upcomingGP = { name, shortName: nextEv.shortName, dateStart: nextEv.dateStart,

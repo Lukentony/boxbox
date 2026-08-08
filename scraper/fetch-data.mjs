@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, renameSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -59,6 +59,23 @@ async function main() {
   }
   const players = (lb.success?.leaderboard || []).filter(p => p.overallPoints != null);
   console.log(`${players.length} giocatori attivi`);
+  // Guardia: leaderboard vuota = sessione/Incapsula in errore. NON sovrascrivere
+  // all-teams.json con dati vuoti (visto 2026-08-08 13:00: 0 giocatori -> file 1.9KB,
+  // roster di tutti i GP persi).
+  //
+  // Bugfix 2026-08-08 (Claude): la guardia faceva `return` qui, saltando anche
+  // events.json e i dati pubblici sotto (riders/constructors/squads) — non
+  // intenzionale, loro non dipendono dalla sessione autenticata rotta. Ora la
+  // guardia si applica solo alla sezione roster piu' sotto; qui si prosegue e si
+  // segnala solo con un flag + exit code dedicato (3), cosi' il chiamante
+  // (boxbox-cron.sh) puo' avvisare su Discord invece di restare silenzioso come
+  // prima (impatto ridotto: boxbox-cron.sh rifetcha gia' riders/constructors/
+  // squads/events all'inizio della pipeline in modo indipendente, quindi la
+  // regressione toccava solo chi invoca fetch-data.mjs da solo).
+  const leaderboardEmpty = !players.length;
+  if (leaderboardEmpty) {
+    console.error('Leaderboard vuota — roster (all-teams.json) NON aggiornato, dati pubblici proseguono comunque');
+  }
 
   const eventsRes = await fetch(`${BASE}/json/fantasy/events.json`, { headers: HEADERS });
   const events = await eventsRes.json();
@@ -72,9 +89,11 @@ async function main() {
 
   const completedEvIds = events.filter(isEventStarted).map(e => e.id);
 
-  // Pre-show prossimo GP nelle 48h precedenti alla prima sessione
+  // Pre-show prossimo GP nelle 24h precedenti alla prima sessione.
+  // Bugfix 2026-08-08 (Claude): era 48h, disallineato da compute.mjs (gia' a 24h dal fix del
+  // 7/08) -- finestra 24-48h dove questo file marcava il GP "pre-show" ma compute.mjs no.
   {
-    const PRE_SHOW_H = 48;
+    const PRE_SHOW_H = 24;
     const nowMs = Date.now();
     const nextEv = events
       .filter(e => !isEventStarted(e) && e.status !== 'complete' && e.dateStart)
@@ -91,22 +110,27 @@ async function main() {
   writeFileSync(resolve(DIR, 'events.json'), JSON.stringify(events, null, 2));
   console.log(`${completedEvIds.length} GP completati: ${completedEvIds.join(', ')}`);
 
-  const allData = { leaderboard: lb.success?.leaderboard, teams: {}, fetchedAt: timestamp };
+  if (!leaderboardEmpty) {
+    const allData = { leaderboard: lb.success?.leaderboard, teams: {}, fetchedAt: timestamp };
 
-  for (const evId of completedEvIds) {
-    allData.teams[evId] = {};
-    for (const p of players) {
-      try {
-        const t = await fetchJSON(`/api/en/fantasy/team/show-user-team?profileId=${p.profileId}&eventId=${evId}`);
-        allData.teams[evId][p.displayName] = t.success;
-      } catch (e) {
-        console.warn(`${p.displayName} GP${evId}: ${e.message}`);
+    for (const evId of completedEvIds) {
+      allData.teams[evId] = {};
+      for (const p of players) {
+        try {
+          const t = await fetchJSON(`/api/en/fantasy/team/show-user-team?profileId=${p.profileId}&eventId=${evId}`);
+          allData.teams[evId][p.displayName] = t.success;
+        } catch (e) {
+          console.warn(`${p.displayName} GP${evId}: ${e.message}`);
+        }
       }
+      console.log(`GP ${evId} — ${Object.keys(allData.teams[evId]).length} team`);
     }
-    console.log(`GP ${evId} — ${Object.keys(allData.teams[evId]).length} team`);
-  }
 
-  writeFileSync(resolve(DIR, 'all-teams.json'), JSON.stringify(allData, null, 2));
+    // Scrittura atomica (tmp + rename): se il processo muore a meta' non lascia un file troncato
+    const tmpAll = resolve(DIR, 'all-teams.json.tmp');
+    writeFileSync(tmpAll, JSON.stringify(allData, null, 2));
+    renameSync(tmpAll, resolve(DIR, 'all-teams.json'));
+  }
 
   console.log('Dati pubblici...');
   const publicFiles = [
@@ -120,7 +144,12 @@ async function main() {
     console.log(`${file}`);
   }
 
-  console.log(`DONE — all-teams.json + dati pubblici salvati`);
+  console.log(`DONE — ${leaderboardEmpty ? 'solo dati pubblici (leaderboard vuota)' : 'all-teams.json + dati pubblici'} salvati`);
+
+  // Exit code dedicato (3): "riuscito ma degradato", distinto da 0 (tutto ok) e da
+  // un errore fatale (1/2) — il chiamante decide se avvisare senza dover fare grep
+  // sui log per riconoscere il caso.
+  if (leaderboardEmpty) process.exitCode = 3;
 }
 
 main().catch(e => {

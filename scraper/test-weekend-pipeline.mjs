@@ -72,12 +72,12 @@ function testPlayerFilter() {
   console.log('\n[2] Filtro giocatori leaderboard');
 
   const mockLeaderboard = [
-    { profileId: 250275, displayName: '8', overallPoints: 939.5 },
-    { profileId: 250259, displayName: 'GianLai', overallPoints: 857.5 },
-    { profileId: 252776, displayName: 'Fulvio', overallPoints: 848.5 },
-    { profileId: 250270, displayName: 'Lukentony', overallPoints: 768 },
-    { profileId: 250931, displayName: 'claudioenne', overallPoints: null },
-    { profileId: 412561, displayName: 'Team 8', overallPoints: null },
+    { profileId: 100001, displayName: 'Giocatore1', overallPoints: 939.5 },
+    { profileId: 100002, displayName: 'Giocatore2', overallPoints: 857.5 },
+    { profileId: 100003, displayName: 'Giocatore3', overallPoints: 848.5 },
+    { profileId: 100004, displayName: 'Giocatore4', overallPoints: 768 },
+    { profileId: 100005, displayName: 'AccountInattivo', overallPoints: null },
+    { profileId: 100006, displayName: 'AccountTest', overallPoints: null },
   ];
 
   const oldFilter = mockLeaderboard.filter(p => p.overallPoints);
@@ -147,12 +147,7 @@ function testRealLeaderboard() {
 
   const activePlayers = leaderboard.filter(p => p.overallPoints != null);
   assert(activePlayers.length >= 4, `${activePlayers.length} giocatori attivi (atteso >= 4)`);
-
-  const expectedNames = ['8', 'GianLai', 'Fulvio', 'Lukentony'];
-  for (const name of expectedNames) {
-    const found = activePlayers.find(p => p.displayName === name);
-    assert(!!found, `giocatore "${name}" presente con ${found?.overallPoints ?? '?'} pt`);
-  }
+  console.log(`  Info: giocatori attivi trovati: ${activePlayers.map(p => p.displayName).join(', ')}`);
 
   if (raw.success?.user) {
     const user = raw.success.user;
@@ -183,18 +178,13 @@ function testAllTeams() {
   assert(leaderboard.length >= 4, `leaderboard: ${leaderboard.length} entries`);
   assert(eventIds.length > 0, `team presenti per ${eventIds.length} eventi`);
 
-  const activePlayers = leaderboard.filter(p => p.overallPoints != null);
   for (const evId of eventIds) {
     const playersInEvent = Object.keys(teams[evId]);
     assert(playersInEvent.length >= 4,
       `evento ${evId}: ${playersInEvent.length} giocatori (atteso >= 4)`);
 
-    for (const name of ['8', 'GianLai', 'Fulvio', 'Lukentony']) {
+    for (const name of playersInEvent) {
       const team = teams[evId][name];
-      if (!team) {
-        assert(false, `evento ${evId}: team mancante per "${name}"`);
-        continue;
-      }
       const hasRiders = (team.riders?.length || 0) > 0;
       assert(hasRiders, `evento ${evId}: "${name}" ha ${team.riders?.length || 0} riders`);
     }

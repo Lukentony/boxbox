@@ -1,40 +1,32 @@
 node_modules/
-profile/
+__pycache__/
+*.pyc
 .env
 .env.cookie
 cookies.json
 league-snapshot.json
 
-# Generated data files
-all-teams.json
-breakdown.json
-riders.json
-events.json
-constructors.json
-squads.json
-teams.json
-news.json
-other-categories.json
-dist/data/*.json
-
-# Old project folders (v1, design iterations)
-motogp/
-claude-design/
-*.zip
+# File dati generati dalla pipeline (non versionati: si rigenerano dal cron)
+scraper/all-teams.json
+scraper/breakdown.json
+scraper/riders.json
+scraper/events.json
+scraper/constructors.json
+scraper/squads.json
+scraper/news.json
+scraper/news-signals.json
+scraper/other-categories.json
+scraper/nvidia-model-state.json
+scraper/dist/data/*.json
 
 # OS artifacts
 .DS_Store
 Thumbs.db
 
-# Logs (keep script, not logs)
+# Log (si tiene lo script, non l'output)
 cron/*.log
 *.log
 
-# Old/duplicate files not part of the app
-scraper/index.html
-scraper/playwright-login.mjs
-scraper/dist/download-all-data.js
-scraper/dist/upload.html
-scraper/README.md
-nginx-setup.sh
-nginx-setup.sh
+# Backup locali dei deploy manuali
+*.bak
+*.bak.*

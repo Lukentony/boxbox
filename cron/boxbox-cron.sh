@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-SCRAPER="/home/nasvpn/boxbox/scraper"
-CRON_DIR="/home/nasvpn/boxbox/cron"
+CRON_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRAPER="$(cd "$CRON_DIR/../scraper" && pwd)"
 LOG="$CRON_DIR/cron.log"
-WEBHOOK="http://localhost:5678/webhook/boxbox-alert"
+NOTIFY="$CRON_DIR/notify-discord.sh"
 DIST="$SCRAPER/dist/data"
 
 log() { echo "[$(date '+%F %T')] $*" >> "$LOG"; }
@@ -37,20 +37,28 @@ if ! node refresh-session.mjs >> "$LOG" 2>&1; then
     log "Rinnovo OK, riprovo refresh-session"
     if ! node refresh-session.mjs >> "$LOG" 2>&1; then
       log "SKIP fetch-data (rinnovo riuscito ma sessione ancora non valida)"
-      curl -fsS --max-time 10 -X POST -H 'Content-Type: application/json'         -d '{"message":"BoxBox: rinnovo DAT riuscito ma API ancora 401"}'         "$WEBHOOK" > /dev/null 2>&1 || true
+      bash "$NOTIFY" "BoxBox: rinnovo DAT riuscito ma API ancora 401" || true
       log "DONE pipeline (solo dati pubblici)"
       exit 0
     fi
   else
     log "SKIP fetch-data (rinnovo automatico fallito)"
-    curl -fsS --max-time 10 -X POST -H 'Content-Type: application/json'       -d '{"message":"BoxBox: DAT scaduto e rinnovo automatico fallito"}'       "$WEBHOOK" > /dev/null 2>&1 || true
+    bash "$NOTIFY" "BoxBox: DAT scaduto e rinnovo automatico fallito" || true
     log "DONE pipeline (solo dati pubblici)"
     exit 0
   fi
 fi
 
 log "STEP fetch-data"
-if ! node fetch-data.mjs >> "$LOG" 2>&1; then
+node fetch-data.mjs >> "$LOG" 2>&1
+FETCH_EXIT=$?
+if [ "$FETCH_EXIT" -eq 3 ]; then
+  # fetch-data.mjs segnala con exit 3 il caso "leaderboard vuota, roster non
+  # aggiornato" (sessione Fantasy in errore lato provider). Non e' un FAIL vero
+  # e proprio: i dati pubblici restano comunque aggiornati.
+  log "WARN fetch-data: leaderboard vuota, roster non aggiornato (dati pubblici ok)"
+  bash "$NOTIFY" "BoxBox: leaderboard Fantasy vuota (sessione?) — roster non aggiornato, riprovo al prossimo giro" || true
+elif [ "$FETCH_EXIT" -ne 0 ]; then
   log "FAIL fetch-data"
   exit 2
 fi

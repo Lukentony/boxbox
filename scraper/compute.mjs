@@ -23,7 +23,7 @@ const isEventStarted = (ev) => {
 const completed = events.filter(isEventStarted).sort((a, b) => a.order - b.order);
 
 // Pre-show prossimo GP (stesso threshold di fetch-data.mjs)
-const PRE_SHOW_H = 48;
+const PRE_SHOW_H = 24;
 const _nowMs = Date.now();
 const _nextSched = events
   .filter(e => !isEventStarted(e) && e.status !== 'complete' && e.dateStart)
@@ -67,19 +67,17 @@ for (const p of players) {
     const add = (rid, factor) => {
       const r = riderById[rid];
       const e = r?.stats?.events?.[String(eid)];
-      if (!e) return;
-      q  += (e.q2Points || e.q1Points || 0) * factor;
-      sp += (e.sprintPoints || 0) * factor;
-      ra += (e.finalPoints || 0) * factor;
-      ex += (e.fastestLapPoints || 0) * factor;
-      ex += (e.riderOfTheRacePoints || 0) * factor;
-      ex += (e.perfectGPPoints || 0) * factor;
-      ex += (e.topSpeedPoints || 0) * factor;
-      ex += (e.circuitRecordPoints || 0) * factor;
-      ex += (e.dnfPenaltyPoints || 0) * factor;
-      ex += (e.gridVsFinalPositionPoints || 0) * factor;
-      ex += (e.standingsVsFinalPositionPoints || 0) * factor;
-      ex += (e.qualifyingVsFinalPositionPoints || 0) * factor;
+      if (!e) {
+        console.warn(`[compute] ${name}: pilota ${rid} senza stats.events[${eid}] (GP ${eid}) -- trattato come 0, controllare riders.json`);
+        return;
+      }
+      const basePts = e.points || 0;
+      const riderTotal = basePts * factor;
+      const qComp = (e.q2Points || e.q1Points || 0) * factor;
+      const spComp = (e.sprintPoints || 0) * factor;
+      const raComp = (e.finalPoints || 0) * factor;
+      q  += qComp; sp += spComp; ra += raComp;
+      ex += riderTotal - qComp - spComp - raComp;
     };
 
     (team.riders || []).forEach(rid => add(rid, 1));
@@ -87,7 +85,10 @@ for (const p of players) {
     // Boosters: rider booster aggiunge ancora una volta i punti del pilota (2x totale)
     (team.boosters || []).forEach(b => {
       if (b.boosterType === 'rider' && b.details?.riderId) {
-        add(b.details.riderId, 1); // aggiunge 1x extra (il primo 1x è già contato sopra)
+        add(b.details.riderId, 1);
+      } else if (b.boosterType === 'golden' && b.details?.riderId) {
+        const inRoster = (team.riders||[]).includes(b.details.riderId) || (team.ridersSilver||[]).includes(b.details.riderId);
+        if (!inRoster) add(b.details.riderId, 1);
       }
     });
     (team.constructors || []).forEach(cid => { ex += constrById[cid]?.stats?.events?.[String(eid)]?.points || 0; });

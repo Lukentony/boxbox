@@ -4,7 +4,7 @@
 # Esegue la pipeline solo durante le finestre di gara (sprint/final).
 # In idle, esce senza fare nulla in <100ms.
 
-CRON_DIR="/home/nasvpn/boxbox/cron"
+CRON_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG="$CRON_DIR/race-watch.log"
 PHASE_SCRIPT="$CRON_DIR/race-phase.py"
 PIPELINE="$CRON_DIR/boxbox-cron.sh"

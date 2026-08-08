@@ -1,4 +1,4 @@
-const CACHE_NAME = 'boxbox-v5';
+const CACHE_NAME = 'boxbox-v6';
 const SHELL = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/favicon.ico'];
 const DATA_PREFIX = '/data/';
 const MAX_DATA_AGE = 5 * 60 * 1000;

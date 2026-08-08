@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-SCRAPER="/home/nasvpn/boxbox/scraper"
-LOG="/home/nasvpn/boxbox/cron/cron.log"
+CRON_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRAPER="$(cd "$CRON_DIR/../scraper" && pwd)"
+LOG="$CRON_DIR/cron.log"
 
 log() { echo "[$(date "+%F %T")] $*" >> "$LOG"; }
 

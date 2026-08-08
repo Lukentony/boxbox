@@ -14,8 +14,9 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 import urllib.request, urllib.error
 
-EVENTS_LOCAL  = Path('/home/nasvpn/boxbox/scraper/dist/data/events.json')
-RIDERS_LOCAL  = Path('/home/nasvpn/boxbox/scraper/dist/data/riders.json')
+BASE_DIR = Path(__file__).resolve().parent.parent
+EVENTS_LOCAL  = BASE_DIR / 'scraper' / 'dist' / 'data' / 'events.json'
+RIDERS_LOCAL  = BASE_DIR / 'scraper' / 'dist' / 'data' / 'riders.json'
 STATE_FILE    = Path('/tmp/boxbox-racewatch.json')
 EVENTS_URL    = 'https://fantasy.motogp.com/json/fantasy/events.json'
 RIDERS_URL    = 'https://fantasy.motogp.com/json/fantasy/riders.json'
