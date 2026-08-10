@@ -59,7 +59,10 @@ if [ "$FETCH_EXIT" -eq 3 ]; then
   log "WARN fetch-data: leaderboard vuota, roster non aggiornato (dati pubblici ok)"
   bash "$NOTIFY" "BoxBox: leaderboard Fantasy vuota (sessione?) — roster non aggiornato, riprovo al prossimo giro" || true
 elif [ "$FETCH_EXIT" -ne 0 ]; then
+  # Fallimento generico (diverso dal caso leaderboard-vuota sopra) restava silenzioso:
+  # un blocco di ore sul provider passava inosservato finche' qualcuno non apriva l'app.
   log "FAIL fetch-data"
+  bash "$NOTIFY" "BoxBox: fetch-data fallito (exit $FETCH_EXIT) — dati piloti/eventi non aggiornati, riprovo al prossimo giro" || true
   exit 2
 fi
 
