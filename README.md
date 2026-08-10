@@ -85,6 +85,8 @@ scraper/
 ├── fetch-data.mjs          Leaderboard + roster squadre da fantasy.motogp.com
 ├── fetch-teams.mjs         Fetch leggero del solo GP in pre-show (per il watcher rivali)
 ├── fetch-news.mjs          RSS Motorsport.com, raggruppamento per GP imminente
+├── fetch-other-categories.mjs  Classifiche Moto2/Moto3/WSBK da Wikipedia
+├── fetch-rider-history.mjs Storico piloti per circuito/meteo da API MotoGP, 1x/stagione
 ├── analyze-news.mjs        Classificazione sentiment news per pilota via LLM (opzionale)
 ├── compute.mjs             Calcolo breakdown punti (Quali/Sprint/Gara/Bonus)
 ├── team-diff.mjs           Diff roster rivali tra GP, anti-spam a due fasi
@@ -94,7 +96,7 @@ scraper/
 └── .env.example            Template configurazione
 
 cron/
-├── boxbox-cron.sh                  Pipeline oraria (dati + calcolo)
+├── boxbox-cron.sh                  Pipeline oraria (dati + calcolo + storico piloti 1x/stagione)
 ├── boxbox-news.sh                  News + classifiche altre categorie, 2x/giorno
 ├── boxbox-race-watch.sh            Cadenza adattiva durante i weekend di gara
 ├── boxbox-news-signal-watch.sh     Cadenza adattiva pre-lock squadra + watcher rivali

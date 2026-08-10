@@ -68,4 +68,17 @@ node compute.mjs >> "$LOG" 2>&1 || log "WARN compute non bloccante"
 
 cp breakdown.json all-teams.json "$DIST/" 2>/dev/null
 
+log "STEP rider-history"
+HIST="rider-history.json"
+if [ -f "$HIST" ] && grep -q "\"season\":$(date +%Y)" "$HIST"; then
+  log "SKIP rider-history (gia' stagione $(date +%Y))"
+else
+  if node fetch-rider-history.mjs >> "$LOG" 2>&1; then
+    cp "$HIST" "$DIST/" 2>/dev/null
+    log "DONE rider-history"
+  else
+    log "WARN rider-history fallito (non bloccante, resta il file precedente)"
+  fi
+fi
+
 log "DONE pipeline (completo)"
