@@ -6,6 +6,11 @@ let autoRefreshTimer = null;
 export function scheduleAutoRefresh() {
   if (autoRefreshTimer) clearInterval(autoRefreshTimer);
 
+  /* Il toggle "Auto-aggiornamento dati" in Impostazioni scriveva/leggeva questa chiave
+     solo per mostrarsi nell'interfaccia: qui non veniva mai controllata, quindi
+     disattivarlo non fermava davvero l'auto-refresh durante i weekend attivi. */
+  if (localStorage.getItem('bbAutoRefresh') === 'false') return;
+
   const active = DATA.events?.find(e => e.status === 'active');
   const now = new Date();
 

@@ -165,6 +165,10 @@ export function calendarHtml() {
 export function resultsHtml(gpId) {
   const ev = DATA.events.find(e => String(e.id) === String(gpId));
   const evName = ev ? ev.displayedName.trim() : 'GP';
+  /* Un GP "active" puo' avere solo prove/qualifiche gia' disputate: senza questo,
+     ogni pilota che non ha ancora corso la gara vera e propria veniva etichettato
+     "DNF" come chi si e' davvero ritirato. */
+  const raceDone = ev ? effectiveStatus(ev) === 'complete' : true;
   const rows = (DATA.riders || []).map(r => {
     const ed = r.stats?.events?.[gpId];
     if (!ed) return null;
@@ -191,7 +195,7 @@ export function resultsHtml(gpId) {
   rows.forEach(r => {
     const finOk = r.finish && r.finish > 0;
     const gridOk = r.grid && r.grid > 0;
-    const arr = finOk ? `${r.finish}°` : 'DNF';
+    const arr = finOk ? `${r.finish}°` : (raceDone ? 'DNF' : '–');
     const grid = gridOk ? `${r.grid}°` : '–';
     const delta = (finOk && gridOk) ? (r.grid - r.finish) : null;
     const dStr = delta === null ? '' : delta > 0 ? `<span style="color:var(--gold)">▲${delta}</span>` : delta < 0 ? `<span style="color:var(--accent)">▼${-delta}</span>` : '=';

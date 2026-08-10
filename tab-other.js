@@ -4,14 +4,24 @@ import { animateChildren, setTopbar } from './ui.js';
 
 let currentOtherView = null; /* null = menu, oppure 'moto2','moto3','motoe','wsbk' */
 
+/* Usata da switchTab() quando si arriva sulla tab "Altre" dal basso: senza questo
+   reset, tornare da un'altra tab riproponeva la sotto-vista dove si era rimasti
+   invece del menu principale. */
+export function resetOtherView() { currentOtherView = null; }
+
 export function renderOther() {
   const root = document.getElementById('s-other');
-  
+
   /* Se siamo dentro una vista categoria */
   if (currentOtherView) {
     renderOtherCategory(currentOtherView);
     return;
   }
+
+  /* Il ramo menu si auto-ripristina sempre la topbar: prima, tornando qui dal
+     pulsante "indietro" di una sotto-vista, il titolo restava bloccato su
+     quello della sotto-vista (solo renderOtherCategory la impostava, mai il menu). */
+  setTopbar('Motorsport', 'Altre categorie', '');
 
   const categories = [
     { id: 'moto2', name: 'Moto2', icon: '🏍️', desc: 'Campionato 2026' },

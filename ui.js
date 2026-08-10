@@ -2,7 +2,7 @@ import { stopCountdown } from './countdown.js';
 import { activeEvent } from './selectors.js';
 import { currentTab, setCurrentTab } from './state.js';
 import { renderHome } from './tab-home.js';
-import { renderOther } from './tab-other.js';
+import { renderOther, resetOtherView } from './tab-other.js';
 import { renderStandings } from './tab-standings.js';
 
 export function setTopbar(eyebrow, title, right) {
@@ -14,8 +14,8 @@ export function setTopbar(eyebrow, title, right) {
 /* ═════════════════════════════════════════════════════════
    HOME
    ═════════════════════════════════════════════════════════ */
-export function switchTab(tab) {
-  if (tab === currentTab) return;
+export function switchTab(tab, force = false) {
+  if (tab === currentTab && !force) return;
   setCurrentTab(tab);
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('is-active'));
   document.querySelectorAll('.bnav-btn').forEach(b => b.classList.remove('is-active'));
@@ -37,10 +37,15 @@ export function switchTab(tab) {
 
   /* Home: refresh countdown + content */
   if (tab === 'home') renderHome();
-  else stopCountdown();
+  else stopCountdown('cd');
 
   /* Re-render standings on viewMode change */
   if (tab === 'standings') renderStandings();
+
+  /* Altre: si torna sempre al menu principale, mai alla sotto-vista dove si era
+     rimasti (Moto2/Moto3/WSBK/Analisi) — prima restava "intrappolata" finché non
+     si usava il pulsante "indietro" interno. */
+  if (tab === 'other') { resetOtherView(); renderOther(); }
 
   /* Show mode-toggle only on standings */
   const modeToggle = document.getElementById('mode-toggle');

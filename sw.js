@@ -1,12 +1,21 @@
-const CACHE_NAME = 'boxbox-v6';
-const SHELL = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/favicon.ico'];
+const CACHE_NAME = 'boxbox-v10';
+const SHELL = [
+  '/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/favicon.ico',
+  '/styles.css',
+  '/format.js', '/state.js', '/data.js', '/selectors.js', '/analysis.js',
+  '/countdown.js', '/ui.js', '/tab-home.js', '/tab-standings.js', '/tab-fantasy.js',
+  '/tab-other.js', '/pull-to-refresh.js', '/notifications.js', '/auto-refresh.js', '/main.js',
+];
 const DATA_PREFIX = '/data/';
 const MAX_DATA_AGE = 5 * 60 * 1000;
 
 self.addEventListener('install', e => {
+  /* addAll e' atomico: un solo 404 farebbe fallire l'intero install e la PWA
+     resterebbe bloccata sulla versione precedente. add() singolo con .catch
+     degrada l'offline sul file mancante invece di bloccare l'aggiornamento. */
   e.waitUntil(
     caches.open(CACHE_NAME)
-      .then(c => c.addAll(SHELL))
+      .then(c => Promise.all(SHELL.map(url => c.add(url).catch(() => {}))))
       .then(() => self.skipWaiting())
   );
 });

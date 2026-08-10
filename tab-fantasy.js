@@ -151,7 +151,7 @@ export function renderUpcomingEventView(evMeta, ev) {
   h += `<div class="card" style="margin-bottom:12px">
     <div class="card-h"><span class="card-t">🗓 Prossimo GP</span></div>
     <div style="padding:0 16px 16px">
-      <div class="cd" id="cd"></div>
+      <div class="cd" id="cd-fantasy"></div>
       <div style="font-family:var(--f-mono);font-size:11px;color:var(--text-faint);margin-top:6px">
         ${evMeta.circuit} · Prima sessione ${fmtDate(evMeta.dateStart)}
       </div>
@@ -198,7 +198,7 @@ export function renderUpcomingEventView(evMeta, ev) {
   } else {
     h += `<div class="empty">Dati squadra non ancora disponibili.</div>`;
   }
-  setTimeout(() => startCountdown(evMeta.dateStart), 50);
+  setTimeout(() => startCountdown(evMeta.dateStart, 'cd-fantasy'), 50);
   return h;
 }
 

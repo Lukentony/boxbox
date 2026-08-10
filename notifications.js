@@ -1,4 +1,4 @@
-import { activeEvent, effectiveStatus } from './selectors.js';
+import { effectiveStatus } from './selectors.js';
 import { DATA } from './state.js';
 
 export function checkAndNotify(oldBd, newBd) {
@@ -8,9 +8,9 @@ export function checkAndNotify(oldBd, newBd) {
   if (!oldBd || !newBd) return;
 
   /* Trova l'evento attivo */
-  const activeEvent = DATA.events?.find(e => effectiveStatus(e) === 'active');
-  if (!activeEvent) return;
-  const evId = String(activeEvent.id);
+  const ev = DATA.events?.find(e => effectiveStatus(e) === 'active');
+  if (!ev) return;
+  const evId = String(ev.id);
 
   const oldStandings = oldBd?.byEvent?.[evId]?.standings || [];
   const newStandings = newBd?.byEvent?.[evId]?.standings || [];
@@ -21,7 +21,7 @@ export function checkAndNotify(oldBd, newBd) {
   const changed = newStandings.some(p => (oldTotals[p.displayName] ?? -1) !== (p.total ?? 0));
   if (!changed) return;
 
-  const evName = newBd.byEvent?.[evId]?.eventName || activeEvent.name || 'GP';
+  const evName = newBd.byEvent?.[evId]?.eventName || ev.name || 'GP';
   const body = newStandings.map((p, i) => `${i+1}. ${p.displayName}: ${p.total ?? 0}pt`).join('\n');
 
   if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
