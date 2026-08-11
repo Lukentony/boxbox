@@ -1,6 +1,6 @@
-const CACHE_NAME = 'boxbox-v17';
+const CACHE_NAME = 'boxbox-v18';
 const SHELL = [
-  '/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/favicon.ico',
+  '/', '/manifest.webmanifest?v=17', '/icon-192.png?v=17', '/icon-512.png?v=17', '/favicon.ico',
   '/styles.css',
   '/format.js', '/state.js', '/data.js', '/selectors.js', '/analysis.js',
   '/countdown.js', '/ui.js', '/tab-home.js', '/tab-standings.js', '/tab-fantasy.js',
@@ -9,14 +9,18 @@ const SHELL = [
 const DATA_PREFIX = '/data/';
 const MAX_DATA_AGE = 5 * 60 * 1000;
 
-/* manifest.webmanifest + icone: MAI cache-first. Disinstallare la scorciatoia
-   da home screen NON cancella Service Worker + Cache Storage del sito (solo
-   il sito stesso, da "Cancella dati sito", lo fa) - un cache-first qui
-   avrebbe potuto continuare a servire un'icona vecchia a ogni "Aggiungi a
-   schermata Home" indipendentemente da cosa veniva corretto sul server, per
-   tutti i cicli di disinstalla/reinstalla fatti finora. Sono gli unici file
-   che il sistema operativo legge in un momento preciso (l'installazione) e
-   mai più dopo: devono sempre arrivare dalla rete quando possibile. */
+/* manifest.webmanifest + icone: MAI cache-first, e ora anche con querystring
+   di versione (?v=17) nell'URL stesso. Il primo intervento (cache-first ->
+   network-first) presumeva che il Service Worker fosse l'unico livello di
+   cache in gioco; i log del server hanno poi mostrato che i byte corretti
+   arrivavano comunque al dispositivo reale, quindi il problema puo' essere
+   una cache che il nostro SW non controlla affatto (cache HTTP nativa del
+   browser, cache dell'icona a livello di launcher Android...). Una querystring
+   di versione rende l'URL stesso mai visto prima: nessuna cache, a nessun
+   livello, puo' avere un'entry per un URL che non esisteva prima di questo
+   deploy. E' la tecnica standard di cache-busting, e l'unica che elimina la
+   variabile "cache" per intero invece di scommettere su quale livello sia
+   coinvolto. */
 const NETWORK_FIRST_ALWAYS = new Set([
   '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/favicon.ico',
 ]);
