@@ -199,5 +199,3 @@ export function renderOtherCategory(catId) {
     history.back();
   });
 }
-
-/* Tactical analysis password gate + view */

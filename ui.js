@@ -43,8 +43,8 @@ export function switchTab(tab, force = false) {
   if (tab === 'standings') renderStandings();
 
   /* Altre: si torna sempre al menu principale, mai alla sotto-vista dove si era
-     rimasti (Moto2/Moto3/WSBK/Analisi) — prima restava "intrappolata" finché non
-     si usava il pulsante "indietro" interno. */
+     rimasti (Moto2/Moto3/WSBK) — prima restava "intrappolata" finché non si
+     usava il pulsante "indietro" interno. */
   if (tab === 'other') { resetOtherView(); renderOther(); }
 
   /* Show mode-toggle only on standings */
@@ -71,7 +71,7 @@ export function animateChildren(scr) {
    non aveva alcuna voce di history da consumare (l'app cambiava tab/vista solo
    in memoria, mai un vero cambio di pagina) e usciva subito dall'app anche solo
    tornando da "Altre" a "Home". Un pushState per ogni cambio-tab e ogni apertura
-   di sotto-vista in "Altre" (Moto2/Moto3/WSBK/Analisi) da' al back qualcosa da
+   di sotto-vista in "Altre" (Moto2/Moto3/WSBK) da' al back qualcosa da
    consumare prima di chiudere davvero l'app. */
 export function setupNav() {
   history.replaceState({ tab: currentTab, otherView: null }, '');
