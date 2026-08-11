@@ -9,6 +9,13 @@ let currentOtherView = null; /* null = menu, oppure 'moto2','moto3','motoe','wsb
    invece del menu principale. */
 export function resetOtherView() { currentOtherView = null; }
 
+export function tornaAlMenuAltre() { currentOtherView = null; renderOther(); }
+
+/* Usata sia dal click sulla card categoria sia dal ripristino di history.js
+   (tasto/gesto "indietro"): stesso identico effetto, un solo posto che decide
+   come si apre una sotto-vista. */
+export function mostraSottovistaAltre(id) { currentOtherView = id; renderOther(); }
+
 export function renderOther() {
   const root = document.getElementById('s-other');
 
@@ -98,8 +105,9 @@ export function renderOther() {
   /* Click handler per categorie */
   root.querySelectorAll('[data-cat]').forEach(el => {
     el.addEventListener('click', () => {
-      currentOtherView = el.dataset.cat;
-      renderOther();
+      const id = el.dataset.cat;
+      mostraSottovistaAltre(id);
+      history.pushState({ tab: 'other', otherView: id }, '');
     });
   });
 
@@ -188,8 +196,7 @@ export function renderOtherCategory(catId) {
   animateChildren(root);
 
   document.getElementById('back-other').addEventListener('click', () => {
-    currentOtherView = null;
-    renderOther();
+    history.back();
   });
 }
 

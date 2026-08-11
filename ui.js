@@ -2,7 +2,7 @@ import { stopCountdown } from './countdown.js';
 import { activeEvent } from './selectors.js';
 import { currentTab, setCurrentTab } from './state.js';
 import { renderHome } from './tab-home.js';
-import { renderOther, resetOtherView } from './tab-other.js';
+import { mostraSottovistaAltre, renderOther, resetOtherView, tornaAlMenuAltre } from './tab-other.js';
 import { renderStandings } from './tab-standings.js';
 
 export function setTopbar(eyebrow, title, right) {
@@ -67,10 +67,31 @@ export function animateChildren(scr) {
   kids.forEach(c => c.classList.add('anim-in'));
 }
 
+/* Storia di navigazione: senza questo, il tasto/gesto "indietro" di Android
+   non aveva alcuna voce di history da consumare (l'app cambiava tab/vista solo
+   in memoria, mai un vero cambio di pagina) e usciva subito dall'app anche solo
+   tornando da "Altre" a "Home". Un pushState per ogni cambio-tab e ogni apertura
+   di sotto-vista in "Altre" (Moto2/Moto3/WSBK/Analisi) da' al back qualcosa da
+   consumare prima di chiudere davvero l'app. */
 export function setupNav() {
+  history.replaceState({ tab: currentTab, otherView: null }, '');
+
   document.getElementById('bnav').addEventListener('click', e => {
     const btn = e.target.closest('.bnav-btn');
-    if (btn) switchTab(btn.dataset.tab);
+    if (!btn) return;
+    const tab = btn.dataset.tab;
+    if (tab === currentTab) return;
+    switchTab(tab);
+    history.pushState({ tab, otherView: null }, '');
+  });
+
+  window.addEventListener('popstate', e => {
+    const s = e.state || { tab: 'home', otherView: null };
+    if (s.tab !== currentTab) switchTab(s.tab, true);
+    if (s.tab === 'other') {
+      if (s.otherView) mostraSottovistaAltre(s.otherView);
+      else tornaAlMenuAltre();
+    }
   });
 }
 
