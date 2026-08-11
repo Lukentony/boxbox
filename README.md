@@ -56,10 +56,17 @@ moduli — qualunque server statico va bene, incluso `python3 -m http.server` in
 cd scraper
 cp .env.example .env   # compila LEAGUE_ID, credenziali, RIVALS, webhook Discord (tutto opzionale
                         # tranne le credenziali Fantasy — vedi i commenti nel file)
-node refresh-session.mjs && node fetch-data.mjs && node compute.mjs && node fetch-news.mjs
 cd ..
-python3 -m http.server 8080   # o: docker compose up
+bash cron/boxbox-cron.sh   # primo giro: popola data/ (pubblici + autenticati + breakdown)
+bash cron/boxbox-news.sh   # opzionale: news + classifiche Moto2/Moto3/WSBK
+
+python3 -m http.server 8080   # o: docker compose up --build
 ```
+
+`cron/boxbox-cron.sh` è anche l'unico posto che sa pubblicare i JSON generati da `scraper/`
+dentro `data/` (i moduli `scraper/*.mjs` scrivono nella propria cartella, non nella web root) —
+lanciare i comandi `node` uno per uno senza passare da lì lascerebbe `data/` vuota e ogni
+`fetch()` del frontend fallirebbe in silenzio.
 
 ## Struttura
 
@@ -80,6 +87,9 @@ pull-to-refresh.js,         Pull-to-refresh, notifiche in-app, auto-refresh nei 
   notifications.js,
   auto-refresh.js
 sw.js                       Service worker (cache shell + dati)
+
+data/                       JSON generati dalla pipeline (non versionati, li crea/aggiorna
+                             cron/boxbox-cron.sh) — è qui che il frontend fa fetch()
 
 scraper/
 ├── fetch-data.mjs          Leaderboard + roster squadre da fantasy.motogp.com

@@ -1,0 +1,7 @@
+.git
+scraper/.env
+scraper/*.env
+scraper/*.json
+cron/*.log
+cron/__pycache__
+data

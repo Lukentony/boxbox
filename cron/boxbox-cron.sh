@@ -5,7 +5,7 @@ CRON_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRAPER="$(cd "$CRON_DIR/../scraper" && pwd)"
 LOG="$CRON_DIR/cron.log"
 NOTIFY="$CRON_DIR/notify-discord.sh"
-DIST="$SCRAPER/dist/data"
+DIST="$SCRAPER/../data"
 
 log() { echo "[$(date '+%F %T')] $*" >> "$LOG"; }
 

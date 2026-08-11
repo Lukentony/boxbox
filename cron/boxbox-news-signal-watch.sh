@@ -41,7 +41,7 @@ case "$ACTION" in
 
     # 2) News fresche (non aspetta il cron delle 8/20)
     if node fetch-news.mjs >> "$LOG" 2>&1; then
-      cp news.json dist/data/ 2>/dev/null
+      cp news.json ../data/ 2>/dev/null
       log "NEWS-SIGNAL [$PHASE] fetch-news OK"
     else
       log "NEWS-SIGNAL [$PHASE] fetch-news FALLITO"
@@ -49,7 +49,7 @@ case "$ACTION" in
 
     # 3) Lavoro vero: classificazione LLM
     if node analyze-news.mjs >> "$LOG" 2>&1; then
-      cp news-signals.json dist/data/ 2>/dev/null
+      cp news-signals.json ../data/ 2>/dev/null
       log "NEWS-SIGNAL [$PHASE] analyze-news OK"
     else
       log "NEWS-SIGNAL [$PHASE] analyze-news fallito (non bloccante)"
@@ -86,7 +86,7 @@ if [ "$TEAM_INTERVAL" -gt 0 ]; then
     echo "$NOW" > "$TEAM_STATE"
     cd "$SCRAPER" || { log "TEAM FAIL cd $SCRAPER"; rm -f "$LOCK"; exit 1; }
     if node fetch-teams.mjs >> "$LOG" 2>&1; then
-      cp all-teams.json dist/data/ 2>/dev/null
+      cp all-teams.json ../data/ 2>/dev/null
       log "TEAM [$PHASE] fetch OK"
       DIFF=$(node team-diff.mjs 2>> "$LOG")
       if [ -n "$DIFF" ]; then

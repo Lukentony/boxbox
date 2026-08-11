@@ -17,7 +17,7 @@ scraper/news.json
 scraper/news-signals.json
 scraper/other-categories.json
 scraper/nvidia-model-state.json
-scraper/dist/data/*.json
+data/*.json
 
 # OS artifacts
 .DS_Store
