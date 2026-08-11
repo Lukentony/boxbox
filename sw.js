@@ -1,4 +1,4 @@
-const CACHE_NAME = 'boxbox-v16';
+const CACHE_NAME = 'boxbox-v17';
 const SHELL = [
   '/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/favicon.ico',
   '/styles.css',
@@ -8,6 +8,18 @@ const SHELL = [
 ];
 const DATA_PREFIX = '/data/';
 const MAX_DATA_AGE = 5 * 60 * 1000;
+
+/* manifest.webmanifest + icone: MAI cache-first. Disinstallare la scorciatoia
+   da home screen NON cancella Service Worker + Cache Storage del sito (solo
+   il sito stesso, da "Cancella dati sito", lo fa) - un cache-first qui
+   avrebbe potuto continuare a servire un'icona vecchia a ogni "Aggiungi a
+   schermata Home" indipendentemente da cosa veniva corretto sul server, per
+   tutti i cicli di disinstalla/reinstalla fatti finora. Sono gli unici file
+   che il sistema operativo legge in un momento preciso (l'installazione) e
+   mai più dopo: devono sempre arrivare dalla rete quando possibile. */
+const NETWORK_FIRST_ALWAYS = new Set([
+  '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/favicon.ico',
+]);
 
 self.addEventListener('install', e => {
   /* addAll e' atomico: un solo 404 farebbe fallire l'intero install e la PWA
@@ -38,10 +50,30 @@ self.addEventListener('fetch', e => {
     return;
   }
 
+  if (NETWORK_FIRST_ALWAYS.has(url.pathname)) {
+    e.respondWith(networkFirstShell(e.request));
+    return;
+  }
+
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
   );
 });
+
+async function networkFirstShell(request) {
+  try {
+    const res = await fetch(request);
+    if (res.ok) {
+      const cache = await caches.open(CACHE_NAME);
+      cache.put(request, res.clone());
+    }
+    return res;
+  } catch {
+    const cache = await caches.open(CACHE_NAME);
+    const cached = await cache.match(request);
+    return cached || Response.error();
+  }
+}
 
 async function networkFirstWithCache(request) {
   try {
