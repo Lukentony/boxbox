@@ -1,4 +1,7 @@
 import { readFileSync, writeFileSync } from 'fs';
+/* La regola dei booster non si riscrive qui: e' lo stesso modulo che disegna i
+   tag in tab-fantasy.js (che lo importa come './boosters.js'). */
+import { goldenRiderIds, riderDoubled, teamDoubled } from '../boosters.js';
 
 const riders     = JSON.parse(readFileSync('riders.json'));
 const events     = JSON.parse(readFileSync('events.json'));
@@ -80,19 +83,16 @@ for (const p of players) {
       ex += riderTotal - qComp - spComp - raComp;
     };
 
-    (team.riders || []).forEach(rid => add(rid, 1));
-    (team.ridersSilver || []).forEach(rid => add(rid, 0.5));
-    // Boosters: rider booster aggiunge ancora una volta i punti del pilota (2x totale)
-    (team.boosters || []).forEach(b => {
-      if (b.boosterType === 'rider' && b.details?.riderId) {
-        add(b.details.riderId, 1);
-      } else if (b.boosterType === 'golden' && b.details?.riderId) {
-        const inRoster = (team.riders||[]).includes(b.details.riderId) || (team.ridersSilver||[]).includes(b.details.riderId);
-        if (!inRoster) add(b.details.riderId, 1);
-      }
-    });
-    (team.constructors || []).forEach(cid => { ex += constrById[cid]?.stats?.events?.[String(eid)]?.points || 0; });
-    (team.squads || []).forEach(sid => { ex += squadById[sid]?.stats?.events?.[String(eid)]?.points || 0; });
+    /* Il factor di ogni riga viene dalla regola condivisa: l'oro intero,
+       l'argento a meta', il doppio quando riderDoubled lo dice (booster 'rider'
+       su quel pilota oppure 'super' su tutta la squadra, argento compreso).
+       Golden e' un pilota extra a punteggio pieno, gia' fuori rosa. */
+    const teamFactor = teamDoubled(team) ? 2 : 1;
+    (team.riders || []).forEach(rid => add(rid, riderDoubled(team, rid) ? 2 : 1));
+    (team.ridersSilver || []).forEach(rid => add(rid, riderDoubled(team, rid) ? 1 : 0.5));
+    goldenRiderIds(team).forEach(rid => add(rid, riderDoubled(team, rid) ? 2 : 1));
+    (team.constructors || []).forEach(cid => { ex += (constrById[cid]?.stats?.events?.[String(eid)]?.points || 0) * teamFactor; });
+    (team.squads || []).forEach(sid => { ex += (squadById[sid]?.stats?.events?.[String(eid)]?.points || 0) * teamFactor; });
 
     const tot = Math.round((q + sp + ra + ex) * 10) / 10;
     byEvent[eid] = {

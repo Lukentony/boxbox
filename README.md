@@ -78,6 +78,8 @@ state.js                    Stato condiviso (DATA + tab/GP selezionati)
 data.js                     load() / refreshData() — fetch e popolamento di DATA
 format.js, selectors.js,    Helper puri: formattazione, derivazioni sui dati, metriche
   analysis.js, countdown.js   prezzo/valore/forma, countdown
+boosters.js                 Regola booster Fantasy (rider 2X, golden, super 2X):
+                             la usano tab-fantasy.js e scraper/compute.mjs
 ui.js                       Navigazione tra tab, orchestrazione del render
 tab-home.js                 Tab Home (countdown, top3, news)
 tab-standings.js            Tab Campionato (piloti/costruttori/team/calendario)
@@ -102,6 +104,7 @@ scraper/
 ├── team-diff.mjs           Diff roster rivali tra GP, anti-spam a due fasi
 ├── refresh-session.mjs     Verifica validità sessione/cookie
 ├── renew-dat.mjs           Rinnovo automatico cookie via Playwright/CDP
+├── test-boosters.mjs       Test della regola booster condivisa (modulo + compute.mjs)
 ├── test-weekend-pipeline.mjs  Test suite dry-run della pipeline
 └── .env.example            Template configurazione
 

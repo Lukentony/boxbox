@@ -1,4 +1,5 @@
 import { riderPriceTrend, riderValue } from './analysis.js';
+import { boosterLabel, goldenRiderIds, riderDoubled, teamDoubled } from './boosters.js';
 import { startCountdown } from './countdown.js';
 import { flagOf, fmtDate } from './format.js';
 import { activePlayers, effectiveStatus } from './selectors.js';
@@ -10,6 +11,13 @@ const fmt = (n) => {
   const r = Math.round(n * 10) / 10;
   return Number.isInteger(r) ? String(r) : r.toFixed(1);
 };
+
+/* La regola dei booster vive in boosters.js: lo stesso modulo calcola i punti in
+   scraper/compute.mjs. Qui si produce solo l'HTML dei tag. */
+const escapeHtml = (s) => String(s).replace(/[&<>"]/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const boosterTags = (team) => (team?.boosters || []).map((booster, i) =>
+  `<span class="boost-tag" style="margin-left:${i ? 4 : 0}px">${escapeHtml(boosterLabel(booster))}</span>`).join('');
 
 /* ═════════════════════════════════════════════════════════
    NAVIGAZIONE TAB
@@ -164,15 +172,24 @@ export function renderUpcomingEventView(evMeta, ev) {
       if (!t) return;
       h += `<div class="p-card"><div class="p-head"><div class="p-id"><div style="min-width:0">
         <div class="p-name">@${name}</div>
-        <div class="p-value">Valore squad €${((t.value||0)/1e6).toFixed(1)}M</div>
+        <div class="p-value">Valore squad €${((t.value||0)/1e6).toFixed(1)}M${boosterTags(t)}</div>
       </div></div></div><div class="p-body"><div style="padding:0 0 8px">`;
       (t.riders||[]).forEach(rid => {
         const r = DATA.riderById[rid]; if (!r) return;
-        const isBoosted = (t.boosters||[]).some(b=>b.boosterType==='rider'&&b.details?.riderId===rid);
+        const isBoosted = riderDoubled(t, rid);
         const pts = r.stats?.totalPoints||0;
         h += `<div class="row"><div class="plate plate--gold"><span>${r.number||'?'}</span></div>
           <div class="row-m"><div class="row-name">${r.firstName} ${r.lastName}${isBoosted?'<span class="boost-tag">2X</span>':''}</div>
           <div class="row-sub">${DATA.constById[r.constructorId]?.name||''}</div></div>
+          <div class="row-pts" style="font-size:12px">${pts}<div class="pts-sub">stagione</div></div></div>`;
+      });
+      /* Golden: un pilota oro extra, fuori rosa, a punteggio pieno. */
+      goldenRiderIds(t).forEach(rid => {
+        const r = DATA.riderById[rid]; if (!r) return;
+        const pts = r.stats?.totalPoints||0;
+        h += `<div class="row"><div class="plate plate--gold"><span>${r.number||'?'}</span></div>
+          <div class="row-m"><div class="row-name">${r.firstName} ${r.lastName}<span class="boost-tag">EXTRA · GOLDEN</span></div>
+          <div class="row-sub">${DATA.constById[r.constructorId]?.name||''} · Pilota extra</div></div>
           <div class="row-pts" style="font-size:12px">${pts}<div class="pts-sub">stagione</div></div></div>`;
       });
       (t.ridersSilver||[]).forEach(rid => {
@@ -235,7 +252,7 @@ export function renderEventView(evId, players) {
           <div class="p-rank">${i+1}</div>
           <div style="min-width:0">
             <div class="p-name">@${p.displayName}</div>
-            ${t?`<div class="p-value">Valore squad €${(t.value/1e6).toFixed(1)}M</div>`:''}
+            ${t?`<div class="p-value">Valore squad €${(t.value/1e6).toFixed(1)}M${boosterTags(t)}</div>`:''}
           </div>
         </div>
         <div class="p-total">
@@ -253,13 +270,15 @@ export function renderEventView(evId, players) {
         <tbody>`;
 
       let sumQ=0, sumS=0, sumR=0, sumT=0;
+      const teamFactor = teamDoubled(t) ? 2 : 1;
 
       /* Gold riders */
       (t.riders || []).forEach(rid => {
         const r = DATA.riderById[rid];
         const e = r?.stats?.events?.[evId];
         if (!r) return;
-        const isBoosted = (t.boosters||[]).some(b => b.boosterType==='rider' && b.details?.riderId===rid);
+        const isBoosted = riderDoubled(t, rid);
+        const factor = isBoosted ? 2 : 1;
         if (!e) {
           h += `<tr>
             <td><span class="star-g">★</span>${r.firstName} ${r.lastName}${isBoosted?'<span class="boost-tag">2X</span>':''}</td>
@@ -267,14 +286,40 @@ export function renderEventView(evId, players) {
           </tr>`;
           return;
         }
-        const q = (e.q2Points || e.q1Points || 0);
-        const sp = e.sprintPoints || 0;
-        const ra = e.finalPoints || 0;
-        const tot = e.points || 0;
+        const q = (e.q2Points || e.q1Points || 0) * factor;
+        const sp = (e.sprintPoints || 0) * factor;
+        const ra = (e.finalPoints || 0) * factor;
+        const tot = (e.points || 0) * factor;
         sumQ += q; sumS += sp; sumR += ra; sumT += tot;
         h += `<tr>
           <td><span class="star-g">★</span>${r.firstName} ${r.lastName}${isBoosted?'<span class="boost-tag">2X</span>':''}</td>
-          <td>${q}</td><td>${sp}</td><td>${ra}</td><td>${tot}</td>
+          <td>${fmt(q)}</td><td>${fmt(sp)}</td><td>${fmt(ra)}</td><td>${fmt(tot)}</td>
+        </tr>`;
+      });
+
+      /* Golden: un pilota oro extra, fuori rosa, a punteggio pieno (doppio se il
+         booster raddoppia anche lui). */
+      goldenRiderIds(t).forEach(rid => {
+        const r = DATA.riderById[rid];
+        const e = r?.stats?.events?.[evId];
+        if (!r) return;
+        const factor = riderDoubled(t, rid) ? 2 : 1;
+        const tag = '<span class="boost-tag">EXTRA · GOLDEN</span>';
+        if (!e) {
+          h += `<tr>
+            <td><span class="star-g">★</span>${r.firstName} ${r.lastName}${tag}</td>
+            <td>—</td><td>—</td><td>—</td><td>—</td>
+          </tr>`;
+          return;
+        }
+        const q = (e.q2Points || e.q1Points || 0) * factor;
+        const sp = (e.sprintPoints || 0) * factor;
+        const ra = (e.finalPoints || 0) * factor;
+        const tot = (e.points || 0) * factor;
+        sumQ += q; sumS += sp; sumR += ra; sumT += tot;
+        h += `<tr>
+          <td><span class="star-g">★</span>${r.firstName} ${r.lastName}${tag}</td>
+          <td>${fmt(q)}</td><td>${fmt(sp)}</td><td>${fmt(ra)}</td><td>${fmt(tot)}</td>
         </tr>`;
       });
 
@@ -290,10 +335,11 @@ export function renderEventView(evId, players) {
           </tr>`;
           return;
         }
-        const q = (e.q2Points || e.q1Points || 0) / 2;
-        const sp = (e.sprintPoints || 0) / 2;
-        const ra = (e.finalPoints || 0) / 2;
-        const tot = (e.points || 0) / 2;
+        const factor = riderDoubled(t, rid) ? 1 : 0.5;
+        const q = (e.q2Points || e.q1Points || 0) * factor;
+        const sp = (e.sprintPoints || 0) * factor;
+        const ra = (e.finalPoints || 0) * factor;
+        const tot = (e.points || 0) * factor;
         sumQ += q; sumS += sp; sumR += ra; sumT += tot;
         h += `<tr class="silver">
           <td><span class="star-s">☆</span>${r.firstName} ${r.lastName}</td>
@@ -304,7 +350,7 @@ export function renderEventView(evId, players) {
       /* Constructor */
       (t.constructors || []).forEach(cid => {
         const c = DATA.constById[cid];
-        const pts = c?.stats?.events?.[evId]?.points || 0;
+        const pts = (c?.stats?.events?.[evId]?.points || 0) * teamFactor;
         sumT += pts;
         h += `<tr class="const">
           <td><span class="ico">🏭</span>${c?.name || 'Costruttore'}</td>
@@ -315,7 +361,7 @@ export function renderEventView(evId, players) {
       /* Squad */
       (t.squads || []).forEach(sid => {
         const s = DATA.squadById[sid];
-        const pts = s?.stats?.events?.[evId]?.points || 0;
+        const pts = (s?.stats?.events?.[evId]?.points || 0) * teamFactor;
         sumT += pts;
         h += `<tr class="squad">
           <td><span class="ico">🏁</span>${s?.name || 'Team'}</td>

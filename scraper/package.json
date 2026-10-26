@@ -7,6 +7,7 @@
     "fetch": "node fetch-data.mjs",
     "compute": "node compute.mjs",
     "news": "node fetch-news.mjs",
-    "pipeline": "node refresh-session.mjs && node fetch-data.mjs && node compute.mjs"
+    "pipeline": "node refresh-session.mjs && node fetch-data.mjs && node compute.mjs",
+    "test": "node test-boosters.mjs"
   }
 }

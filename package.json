@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "type": "module",
+  "//": "boosters.js e' un modulo ES condiviso da browser (tab-fantasy.js) e Node (scraper/compute.mjs): senza type=module Node lo reimporta come ESM a ogni giro di cron, con un warning nel log."
+}
