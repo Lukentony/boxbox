@@ -1,5 +1,5 @@
 import { startCountdown, stopCountdown } from './countdown.js';
-import { flagOf, fmtDate, timeAgo } from './format.js';
+import { escapeHtml, safeHttpUrl, flagOf, fmtDate, timeAgo } from './format.js';
 import { activeEvent, activePlayers, lastCompletedEvent, nextScheduledEvent } from './selectors.js';
 import { DATA } from './state.js';
 import { animateChildren, switchTab } from './ui.js';
@@ -14,6 +14,7 @@ export function renderHome() {
   const secondPts = activePlayers()[1]?.overallPoints ?? 0;
 
   let h = '';
+  let extraNewsHtml = '';
 
   /* Hero: prossimo GP (o attivo) */
   const hero = active || next;
@@ -22,12 +23,12 @@ export function renderHome() {
     h += `
       <div class="hero">
         <div class="hero-r">
-          <span class="hero-round">Round ${hero.order || hero.id}</span>
+          <span class="hero-round">Round ${escapeHtml(hero.order || hero.id)}</span>
           <span class="hero-flag">${flagOf(hero)}</span>
           ${liveTag}
         </div>
-        <div class="hero-name">${hero.displayedName.trim()}</div>
-        <div class="hero-circuit">${hero.circuit}</div>
+        <div class="hero-name">${escapeHtml(hero.displayedName.trim())}</div>
+        <div class="hero-circuit">${escapeHtml(hero.circuit)}</div>
         ${hero.status !== 'active' ? `<div class="cd" id="cd"></div>` :
           `<div class="cd"><div class="cd-u"><div class="cd-n" style="color:var(--accent);background:none;-webkit-text-fill-color:var(--accent)">IN CORSO</div><div class="cd-l">${fmtDate(hero.dateStart)} – ${fmtDate(hero.dateEnd)}</div></div></div>`}
       </div>
@@ -46,12 +47,12 @@ export function renderHome() {
     const injured = r.status === 'injured' ? ' <span class="injured">●</span>' : '';
     h += `
       <div class="row ${i === 0 ? 'is-leader' : ''}">
-        <div class="${plateCls}"><span>${r.number || r.id}</span></div>
+        <div class="${plateCls}"><span>${escapeHtml(r.number || r.id)}</span></div>
         <div class="row-m">
-          <div class="row-name">${r.firstName} ${r.lastName}${injured}</div>
-          <div class="row-sub">${team}</div>
+          <div class="row-name">${escapeHtml(r.firstName)} ${escapeHtml(r.lastName)}${injured}</div>
+          <div class="row-sub">${escapeHtml(team)}</div>
         </div>
-        <div class="row-pts">${DATA.realPts?.[r.id] ?? 0}</div>
+        <div class="row-pts">${escapeHtml(DATA.realPts?.[r.id] ?? 0)}</div>
       </div>
     `;
   });
@@ -65,18 +66,18 @@ export function renderHome() {
       .slice(0, 3);
     h += `<div class="card" style="margin-bottom:0"><div class="card-h">
       <span class="card-t">${flagOf(last)} · Gara</span>
-      <span class="card-meta">${last.displayedName.trim()}</span>
+      <span class="card-meta">${escapeHtml(last.displayedName.trim())}</span>
     </div>`;
     lastResults.forEach((x, i) => {
       const plateCls = i === 0 ? 'plate plate--gold' : i === 1 ? 'plate plate--silver' : 'plate plate--bronze';
       h += `
         <div class="row">
-          <div class="${plateCls}"><span>${x.r.number || x.r.id}</span></div>
+          <div class="${plateCls}"><span>${escapeHtml(x.r.number || x.r.id)}</span></div>
           <div class="row-m">
-            <div class="row-name">${x.r.firstName} ${x.r.lastName}</div>
-            <div class="row-sub">${DATA.constById[x.r.constructorId]?.name || ''}</div>
+            <div class="row-name">${escapeHtml(x.r.firstName)} ${escapeHtml(x.r.lastName)}</div>
+            <div class="row-sub">${escapeHtml(DATA.constById[x.r.constructorId]?.name || '')}</div>
           </div>
-          <div class="row-pts">${x.e.finalPoints || 0}<div class="pts-sub">pt gara</div></div>
+          <div class="row-pts">${escapeHtml(x.e.finalPoints || 0)}<div class="pts-sub">pt gara</div></div>
         </div>
       `;
     });
@@ -94,9 +95,9 @@ export function renderHome() {
           <div class="card-t">⚡ Fantasy · Leader</div>
           <span class="leader-call-arrow">→</span>
         </div>
-        <div class="leader-call-name">@${leader.displayName}</div>
+        <div class="leader-call-name">@${escapeHtml(leader.displayName)}</div>
         <div style="display:flex;align-items:baseline;gap:6px">
-          <span class="leader-call-num">${leader.overallPoints}</span>
+          <span class="leader-call-num">${escapeHtml(leader.overallPoints)}</span>
           <span style="font-family:var(--f-mono);font-size:11px;color:var(--text-faint);letter-spacing:.12em">PT</span>
         </div>
         <div class="leader-call-meta">
@@ -117,21 +118,24 @@ export function renderHome() {
     const mkCard = n => {
       const ago = timeAgo(n.pubDate);
       const cats = (n.categories || []).filter(c => c !== 'MotoGP').slice(0,1).join('');
-      return `<a class="news-card${n.gpRelated ? ' news-card--gp' : ''}" href="${n.link}" target="_blank" rel="noopener">
-        ${n.image ? `<img class="news-img" src="${n.image}" alt="" loading="lazy">` : ''}
+      const link = safeHttpUrl(n.link, '#');
+      const image = safeHttpUrl(n.image);
+      return `<a class="news-card${n.gpRelated ? ' news-card--gp' : ''}" href="${escapeHtml(link)}" target="_blank" rel="noopener">
+        ${image ? `<img class="news-img" src="${escapeHtml(image)}" alt="" loading="lazy">` : ''}
         <div class="news-body">
-          <div class="news-title">${n.title}</div>
-          <div class="news-meta">${ago}${cats ? ' · ' + cats : ''}</div>
+          <div class="news-title">${escapeHtml(n.title)}</div>
+          <div class="news-meta">${escapeHtml(ago)}${cats ? ' · ' + escapeHtml(cats) : ''}</div>
         </div>
       </a>`;
     };
     if (gpNews.length) {
-      h += `<div class="news-h"><span class="news-h-t">🏁 ${upGP.name}</span><span class="news-h-src">${upGP.hoursUntil}h al via</span></div>`;
+      h += `<div class="news-h"><span class="news-h-t">🏁 ${escapeHtml(upGP.name)}</span><span class="news-h-src">${Number(upGP.hoursUntil)}h al via</span></div>`;
       gpNews.forEach(n => { h += mkCard(n); });
     }
     const shownRest = restNews.slice(0, gpNews.length ? 4 : 6);
     const moreRest = restNews.slice(gpNews.length ? 4 : 6);
-    h += `<div class="news-h"><span class="news-h-t">Ultime notizie</span><span class="news-h-src">${DATA.news.source || 'motorsport.com'}</span></div>`;
+    extraNewsHtml = moreRest.map(mkCard).join('');
+    h += `<div class="news-h"><span class="news-h-t">Ultime notizie</span><span class="news-h-src">${escapeHtml(DATA.news.source || 'motorsport.com')}</span></div>`;
     shownRest.forEach(n => { h += mkCard(n); });
     if (moreRest.length) {
       h += `<div class="news-more" id="news-more">Altre ${moreRest.length} notizie ▾</div>`;
@@ -149,21 +153,7 @@ export function renderHome() {
   const moreBtn = root.querySelector('#news-more');
   if (moreBtn && DATA.news?.items) {
     moreBtn.addEventListener('click', () => {
-      const _upGP = DATA.news.upcomingGP;
-      const extra = (_upGP ? DATA.news.items.filter(n => !n.gpRelated) : DATA.news.items).slice(_upGP ? 4 : 6);
-      let eh = '';
-      extra.forEach(n => {
-        const ago = timeAgo(n.pubDate);
-        const cats = (n.categories || []).filter(c => c !== 'MotoGP').slice(0,1).join('');
-        eh += `<a class="news-card" href="${n.link}" target="_blank" rel="noopener">
-          ${n.image ? `<img class="news-img" src="${n.image}" alt="" loading="lazy">` : ''}
-          <div class="news-body">
-            <div class="news-title">${n.title}</div>
-            <div class="news-meta">${ago}${cats ? ' · ' + cats : ''}</div>
-          </div>
-        </a>`;
-      });
-      moreBtn.insertAdjacentHTML('beforebegin', eh);
+      moreBtn.insertAdjacentHTML('beforebegin', extraNewsHtml);
       moreBtn.remove();
     });
   }

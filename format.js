@@ -1,3 +1,16 @@
+export function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+export function safeHttpUrl(value, fallback = '') {
+  if (typeof value !== 'string' || !/^https?:\/\//i.test(value)) return fallback;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : fallback;
+  } catch { return fallback; }
+}
+
 export const FLAGS = {
   THA:'🇹🇭', BRA:'🇧🇷', USA:'🇺🇸', QAT:'🇶🇦', SPA:'🇪🇸', FRA:'🇫🇷',
   GBR:'🇬🇧', ITA:'🇮🇹', NED:'🇳🇱', GER:'🇩🇪', CZE:'🇨🇿', AUT:'🇦🇹',

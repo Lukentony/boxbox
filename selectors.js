@@ -1,4 +1,5 @@
 import { DATA, viewMode } from './state.js';
+import { orderEvents } from './event-order.js';
 
 export function champPoints(r) {
   /* Campionato = real sum of finalPoints; FantasyGP = totalPoints from stats */
@@ -14,10 +15,11 @@ export function activePlayers() {
     .sort((a,b) => b.overallPoints - a.overallPoints);
 }
 export function lastCompletedEvent() {
-  const bdEvents = Object.keys(DATA.breakdown.events || {}).map(Number);
-  if (!bdEvents.length) return null;
-  const maxId = Math.max(...bdEvents);
-  return DATA.events.find(e => e.id === maxId);
+  const byEvent = DATA.breakdown?.byEvent || {};
+  return orderEvents((DATA.events || []).filter(event => {
+    const entry = byEvent[event.id];
+    return entry && !entry.upcoming && effectiveStatus(event) === 'complete';
+  })).at(-1) || null;
 }
 export function nextScheduledEvent() {
   return DATA.events

@@ -1,4 +1,5 @@
 import { DATA } from './state.js';
+import { orderEvents } from './event-order.js';
 
 export function gpSig(gp) {
   const e = (DATA.events || []).find(x => String(x.id) === String(gp));
@@ -7,9 +8,15 @@ export function gpSig(gp) {
 /* trend prezzo dagli ultimi 2 GP con dato in costHistory (priceDiff API è sempre 0) */
 export function riderPriceTrend(r) {
   const ch = r.costHistory || {};
-  const gps = Object.keys(ch).map(Number).filter(n => !isNaN(n)).sort((a, b) => a - b);
-  const last = gps.length ? (ch[gps[gps.length - 1]]?.cost ?? r.cost) : (r.cost || 0);
-  const prev = gps.length >= 2 ? (ch[gps[gps.length - 2]]?.cost ?? last) : last;
+  const prices = orderEvents((DATA.events || []).filter(event => Number.isFinite(ch[event.id]?.cost)))
+    .map(event => ch[event.id].cost);
+  if (prices.length < 2) {
+    const cost = Number.isFinite(r.cost) ? r.cost : 0;
+    const value = cost / 1e6;
+    return { lastM: value, prevM: value, deltaM: 0, dir: 0 };
+  }
+  const prev = prices[prices.length - 2];
+  const last = prices[prices.length - 1];
   const deltaM = (last - prev) / 1e6;
   return { lastM: last / 1e6, prevM: prev / 1e6, deltaM, dir: deltaM > 0 ? 1 : deltaM < 0 ? -1 : 0 };
 }

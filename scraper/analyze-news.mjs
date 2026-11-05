@@ -5,6 +5,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { aggregateByRider, classificationInstructions } from './news-classification.mjs';
 
 const DIR = dirname(fileURLToPath(import.meta.url));
 const BASE_URL = 'https://integrate.api.nvidia.com/v1';
@@ -88,29 +89,9 @@ ${articlesList}
 Rispondi SOLO con un array JSON, senza testo prima o dopo, un elemento per ogni notizia che cita
 almeno un pilota dell'elenco sopra (ignora le notizie che non citano nessun pilota):
 [
-  {"articleIndex": 0, "riderIds": [1], "signal": "positive|negative|neutral", "reason": "motivo breve in italiano, una riga"}
-]`;
-}
-
-function aggregateByRider(classifications, articles) {
-  const priority = { negative: 2, positive: 1, neutral: 0 };
-  const signals = {};
-  for (const c of classifications) {
-    if (!c || !Array.isArray(c.riderIds)) continue;
-    const article = articles[c.articleIndex];
-    for (const rid of c.riderIds) {
-      const key = String(rid);
-      const existing = signals[key];
-      if (!existing || priority[c.signal] > priority[existing.signal]) {
-        signals[key] = {
-          signal: c.signal,
-          reason: c.reason,
-          articleLink: article?.link,
-        };
-      }
-    }
-  }
-  return signals;
+  {"articleIndex": 0, "riderIds": [1], "signal": "neutral", "reason": "motivo breve in italiano, una riga"}
+]
+${classificationInstructions(articles.length)}`;
 }
 
 async function main() {
@@ -148,7 +129,7 @@ async function main() {
   for (const model of candidates) {
     try {
       console.log(`Provo modello ${model}...`);
-      result = await callModel(model, apiKey, prompt);
+      result = aggregateByRider(await callModel(model, apiKey, prompt), articles, riders);
       usedModel = model;
       break;
     } catch (e) {
@@ -162,7 +143,7 @@ async function main() {
     return;
   }
 
-  const signals = aggregateByRider(result, articles);
+  const signals = result;
   const output = {
     fetchedAt: new Date().toISOString(),
     model: usedModel,

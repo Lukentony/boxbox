@@ -48,7 +48,9 @@ stato condiviso, uno per i formatter, ecc. — vedi `Struttura` sotto). Gli ES m
 browser moderni bastano per tenerlo leggibile senza introdurre una toolchain: niente `npm
 install`, niente step di compilazione, un `<script type="module" src="main.js">` e via.
 L'unico requisito è servire i file via HTTP (non `file://`), per via delle policy CORS sui
-moduli — qualunque server statico va bene, incluso `python3 -m http.server` in locale.
+moduli. La radice HTTP deve contenere solo frontend e JSON destinati al pubblico: non
+servire la radice del clone con un server generico, perché include `scraper/.env` dopo il setup.
+Il Dockerfile esistente seleziona esplicitamente i file da servire.
 
 ## Setup
 
@@ -60,13 +62,28 @@ cd ..
 bash cron/boxbox-cron.sh   # primo giro: popola data/ (pubblici + autenticati + breakdown)
 bash cron/boxbox-news.sh   # opzionale: news + classifiche Moto2/Moto3/WSBK
 
-python3 -m http.server 8080   # o: docker compose up --build
+docker compose up --build
 ```
 
 `cron/boxbox-cron.sh` è anche l'unico posto che sa pubblicare i JSON generati da `scraper/`
 dentro `data/` (i moduli `scraper/*.mjs` scrivono nella propria cartella, non nella web root) —
 lanciare i comandi `node` uno per uno senza passare da lì lascerebbe `data/` vuota e ogni
 `fetch()` del frontend fallirebbe in silenzio.
+
+## Verifica locale
+
+Da root del clone: `bash scraper/test-audit.sh`. Non richiede credenziali o rete e usa fixture
+sintetiche; include booster, calendario, rendering e contratto delle classificazioni news.
+Il vecchio `test-weekend-pipeline.mjs` è anche un controllo di dati locali generati, non un gate
+ermetico per un clone vuoto: i suoi controlli su copie delle regole non sostituiscono questi test.
+
+Il controllo browser opzionale è `node scraper/test-browser-security.mjs`, con Playwright e un
+Chromium già installati; `BOXBOX_CHROMIUM` può indicare l'eseguibile locale. Non installa nulla,
+serve solo una lista esplicita di file su loopback, blocca richieste esterne e salva screenshot
+con dati sintetici in `docs/verifiche/`. Non avvia finestre interattive.
+
+Architettura: [ARCHITETTURA.md](ARCHITETTURA.md). Esito e limiti dell'audit:
+[docs/audit-2026-11-05.md](docs/audit-2026-11-05.md).
 
 ## Struttura
 
@@ -78,6 +95,7 @@ state.js                    Stato condiviso (DATA + tab/GP selezionati)
 data.js                     load() / refreshData() — fetch e popolamento di DATA
 format.js, selectors.js,    Helper puri: formattazione, derivazioni sui dati, metriche
   analysis.js, countdown.js   prezzo/valore/forma, countdown
+event-order.js              Ordine cronologico condiviso (order, fallback data; mai ID)
 boosters.js                 Regola booster Fantasy (rider 2X, golden, super 2X):
                              la usano tab-fantasy.js e scraper/compute.mjs
 ui.js                       Navigazione tra tab, orchestrazione del render

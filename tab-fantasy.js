@@ -1,7 +1,7 @@
 import { riderPriceTrend, riderValue } from './analysis.js';
 import { boosterLabel, goldenRiderIds, riderDoubled, teamDoubled } from './boosters.js';
 import { startCountdown } from './countdown.js';
-import { flagOf, fmtDate } from './format.js';
+import { escapeHtml, flagOf, fmtDate } from './format.js';
 import { activePlayers, effectiveStatus } from './selectors.js';
 import { DATA, currentGp, setCurrentGp } from './state.js';
 import { animateChildren } from './ui.js';
@@ -14,8 +14,6 @@ const fmt = (n) => {
 
 /* La regola dei booster vive in boosters.js: lo stesso modulo calcola i punti in
    scraper/compute.mjs. Qui si produce solo l'HTML dei tag. */
-const escapeHtml = (s) => String(s).replace(/[&<>"]/g,
-  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const boosterTags = (team) => (team?.boosters || []).map((booster, i) =>
   `<span class="boost-tag" style="margin-left:${i ? 4 : 0}px">${escapeHtml(boosterLabel(booster))}</span>`).join('');
 
@@ -23,7 +21,7 @@ const boosterTags = (team) => (team?.boosters || []).map((booster, i) =>
    NAVIGAZIONE TAB
    ═════════════════════════════════════════════════════════ */
 export function pricesCardHtml() {
-  const nm = r => (r.firstName ? r.firstName[0] + '. ' : '') + (r.lastName || '');
+  const nm = r => escapeHtml((r.firstName ? r.firstName[0] + '. ' : '') + (r.lastName || ''));
   const rs = (DATA.riders || []).filter(r => r.status !== 'disqualified' && r.stats?.starts > 0)
     .map(r => ({ r, pt: riderPriceTrend(r), v: riderValue(r) }));
   const up = rs.filter(x => x.pt.dir > 0).sort((a, b) => b.pt.deltaM - a.pt.deltaM).slice(0, 5);
@@ -64,10 +62,10 @@ export function renderFantasy() {
     const isLive = effectiveStatus(e) === 'active';
     const liveR = '<span class="chip-dot"></span>LIVE';
     const isUpcoming = DATA.breakdown.byEvent?.[e.id]?.upcoming;
-    h += `<div class="gp-chip ${isLive?'gp-chip--live':''} ${isUpcoming?'gp-chip--upcoming':''} ${String(currentGp)===String(e.id)?'is-active':''}" data-gp="${e.id}">
+    h += `<div class="gp-chip ${isLive?'gp-chip--live':''} ${isUpcoming?'gp-chip--upcoming':''} ${String(currentGp)===String(e.id)?'is-active':''}" data-gp="${escapeHtml(e.id)}">
       <div class="gp-chip-flag">${flagOf(e)}</div>
-      <div class="gp-chip-r">${isLive?liveR:'R'+(e.order||e.id)}</div>
-      <div class="gp-chip-name">${e.shortName||e.displayedName.slice(0,3).toUpperCase()}</div>
+      <div class="gp-chip-r">${isLive?liveR:escapeHtml('R'+(e.order||e.id))}</div>
+      <div class="gp-chip-name">${escapeHtml(e.shortName||e.displayedName.slice(0,3).toUpperCase())}</div>
     </div>`;
   });
   h += `</div>`;
@@ -110,9 +108,9 @@ export function renderSeasonView(players) {
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-family:var(--f-mono);font-size:12px;color:${i===0?'var(--gold)':'var(--text-faint)'};font-weight:700;width:18px">${i+1}</span>
-          <span style="font-family:var(--f-display);font-weight:800;font-style:italic;font-size:15px;${i===0?'color:var(--gold)':''}">@${p.displayName}</span>
+          <span style="font-family:var(--f-display);font-weight:800;font-style:italic;font-size:15px;${i===0?'color:var(--gold)':''}">@${escapeHtml(p.displayName)}</span>
         </div>
-        <span style="font-family:var(--f-mono);font-weight:700;font-size:16px;${i===0?'color:var(--gold)':''}">${p.overallPoints}${gap}</span>
+        <span style="font-family:var(--f-mono);font-weight:700;font-size:16px;${i===0?'color:var(--gold)':''}">${escapeHtml(p.overallPoints)}${gap}</span>
       </div>
       <div style="display:flex;gap:2px;height:20px;margin-bottom:4px">`;
 
@@ -126,17 +124,17 @@ export function renderSeasonView(players) {
       const gpPos = gpStandings.findIndex(s => s.displayName === p.displayName);
       const color = gpPos === 0 ? 'var(--gold)' : gpPos === 1 ? 'var(--silver)' : gpPos === 2 ? 'var(--bronze)' : 'var(--surface-3)';
       const medals = ['🥇','🥈','🥉',''];
-      h += `<div style="flex:1;display:flex;align-items:flex-end" title="${ev.displayedName}: ${gpPos >= 0 ? (gpPos+1)+'° posto' : '—'} (${evPts}pt)">
+      h += `<div style="flex:1;display:flex;align-items:flex-end" title="${escapeHtml(ev.displayedName)}: ${gpPos >= 0 ? (gpPos+1)+'° posto' : '—'} (${evPts}pt)">
         <div style="width:100%;height:${barH}px;background:${color};border-radius:2px"></div>
       </div>`;
     });
 
     h += `</div>
       <div style="display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:9px;color:var(--text-faint);letter-spacing:.06em">
-        <span>Q: ${p.season?.q ?? 0}</span>
-        <span>Sprint: ${p.season?.sprint ?? 0}</span>
-        <span>Gara: ${p.season?.race ?? 0}</span>
-        <span>Bonus: ${p.season?.extra ?? 0}</span>
+        <span>Q: ${escapeHtml(p.season?.q ?? 0)}</span>
+        <span>Sprint: ${escapeHtml(p.season?.sprint ?? 0)}</span>
+        <span>Gara: ${escapeHtml(p.season?.race ?? 0)}</span>
+        <span>Bonus: ${escapeHtml(p.season?.extra ?? 0)}</span>
         <span>Team: €${(p.teamValue/1e6).toFixed(1)}M</span>
       </div>
     </div>`;
@@ -153,15 +151,15 @@ export function renderUpcomingEventView(evMeta, ev) {
   const teams = DATA.allTeams?.teams?.[String(evMeta.id)] || {};
   let h = '';
   h += `<div class="f-subtitle">
-    <span>${flagOf(evMeta)} ${evMeta.displayedName.trim()}</span>
-    <span class="f-stake">R${evMeta.order || evMeta.id}</span>
+    <span>${flagOf(evMeta)} ${escapeHtml(evMeta.displayedName.trim())}</span>
+    <span class="f-stake">R${escapeHtml(evMeta.order || evMeta.id)}</span>
   </div>`;
   h += `<div class="card" style="margin-bottom:12px">
     <div class="card-h"><span class="card-t">🗓 Prossimo GP</span></div>
     <div style="padding:0 16px 16px">
       <div class="cd" id="cd-fantasy"></div>
       <div style="font-family:var(--f-mono);font-size:11px;color:var(--text-faint);margin-top:6px">
-        ${evMeta.circuit} · Prima sessione ${fmtDate(evMeta.dateStart)}
+        ${escapeHtml(evMeta.circuit)} · Prima sessione ${fmtDate(evMeta.dateStart)}
       </div>
     </div>
   </div>`;
@@ -171,44 +169,44 @@ export function renderUpcomingEventView(evMeta, ev) {
       const t = teams[name];
       if (!t) return;
       h += `<div class="p-card"><div class="p-head"><div class="p-id"><div style="min-width:0">
-        <div class="p-name">@${name}</div>
+        <div class="p-name">@${escapeHtml(name)}</div>
         <div class="p-value">Valore squad €${((t.value||0)/1e6).toFixed(1)}M${boosterTags(t)}</div>
       </div></div></div><div class="p-body"><div style="padding:0 0 8px">`;
       (t.riders||[]).forEach(rid => {
         const r = DATA.riderById[rid]; if (!r) return;
         const isBoosted = riderDoubled(t, rid);
         const pts = r.stats?.totalPoints||0;
-        h += `<div class="row"><div class="plate plate--gold"><span>${r.number||'?'}</span></div>
-          <div class="row-m"><div class="row-name">${r.firstName} ${r.lastName}${isBoosted?'<span class="boost-tag">2X</span>':''}</div>
-          <div class="row-sub">${DATA.constById[r.constructorId]?.name||''}</div></div>
-          <div class="row-pts" style="font-size:12px">${pts}<div class="pts-sub">stagione</div></div></div>`;
+        h += `<div class="row"><div class="plate plate--gold"><span>${escapeHtml(r.number||'?')}</span></div>
+          <div class="row-m"><div class="row-name">${escapeHtml(r.firstName)} ${escapeHtml(r.lastName)}${isBoosted?'<span class="boost-tag">2X</span>':''}</div>
+          <div class="row-sub">${escapeHtml(DATA.constById[r.constructorId]?.name||'')}</div></div>
+          <div class="row-pts" style="font-size:12px">${escapeHtml(pts)}<div class="pts-sub">stagione</div></div></div>`;
       });
       /* Golden: un pilota oro extra, fuori rosa, a punteggio pieno. */
       goldenRiderIds(t).forEach(rid => {
         const r = DATA.riderById[rid]; if (!r) return;
         const pts = r.stats?.totalPoints||0;
-        h += `<div class="row"><div class="plate plate--gold"><span>${r.number||'?'}</span></div>
-          <div class="row-m"><div class="row-name">${r.firstName} ${r.lastName}<span class="boost-tag">EXTRA · GOLDEN</span></div>
-          <div class="row-sub">${DATA.constById[r.constructorId]?.name||''} · Pilota extra</div></div>
-          <div class="row-pts" style="font-size:12px">${pts}<div class="pts-sub">stagione</div></div></div>`;
+        h += `<div class="row"><div class="plate plate--gold"><span>${escapeHtml(r.number||'?')}</span></div>
+          <div class="row-m"><div class="row-name">${escapeHtml(r.firstName)} ${escapeHtml(r.lastName)}<span class="boost-tag">EXTRA · GOLDEN</span></div>
+          <div class="row-sub">${escapeHtml(DATA.constById[r.constructorId]?.name||'')} · Pilota extra</div></div>
+          <div class="row-pts" style="font-size:12px">${escapeHtml(pts)}<div class="pts-sub">stagione</div></div></div>`;
       });
       (t.ridersSilver||[]).forEach(rid => {
         const r = DATA.riderById[rid]; if (!r) return;
         const pts = r.stats?.totalPoints||0;
-        h += `<div class="row silver"><div class="plate plate--silver"><span>${r.number||'?'}</span></div>
-          <div class="row-m"><div class="row-name">${r.firstName} ${r.lastName}</div>
-          <div class="row-sub">${DATA.constById[r.constructorId]?.name||''} · 50%</div></div>
-          <div class="row-pts" style="font-size:12px">${pts}<div class="pts-sub">stagione</div></div></div>`;
+        h += `<div class="row silver"><div class="plate plate--silver"><span>${escapeHtml(r.number||'?')}</span></div>
+          <div class="row-m"><div class="row-name">${escapeHtml(r.firstName)} ${escapeHtml(r.lastName)}</div>
+          <div class="row-sub">${escapeHtml(DATA.constById[r.constructorId]?.name||'')} · 50%</div></div>
+          <div class="row-pts" style="font-size:12px">${escapeHtml(pts)}<div class="pts-sub">stagione</div></div></div>`;
       });
       (t.constructors||[]).forEach(cid => {
         const c = DATA.constById[cid]; if (!c) return;
         h += `<div class="row"><div class="plate" style="background:var(--surface-3)"><span style="font-size:14px">🔧</span></div>
-          <div class="row-m"><div class="row-name">${c.name}</div><div class="row-sub">Costruttore</div></div></div>`;
+          <div class="row-m"><div class="row-name">${escapeHtml(c.name)}</div><div class="row-sub">Costruttore</div></div></div>`;
       });
       (t.squads||[]).forEach(sid => {
         const s = DATA.squadById[sid]; if (!s) return;
         h += `<div class="row"><div class="plate" style="background:var(--surface-3)"><span style="font-size:14px">🏔</span></div>
-          <div class="row-m"><div class="row-name">${s.name}</div><div class="row-sub">Team</div></div></div>`;
+          <div class="row-m"><div class="row-name">${escapeHtml(s.name)}</div><div class="row-sub">Team</div></div></div>`;
       });
       h += `</div></div></div>`;
     });
@@ -239,8 +237,8 @@ export function renderEventView(evId, players) {
   let h = '';
   /* Header GP */
   h += `<div class="f-subtitle">
-    <span>${flagOf(evMeta)} ${evMeta.displayedName.trim()} · ${fmtDate(evMeta.dateStart)}</span>
-    <span class="f-stake">R${evMeta.order||evMeta.id}</span>
+    <span>${flagOf(evMeta)} ${escapeHtml(evMeta.displayedName.trim())} · ${fmtDate(evMeta.dateStart)}</span>
+    <span class="f-stake">R${escapeHtml(evMeta.order||evMeta.id)}</span>
   </div>`;
 
   /* Card per giocatore */
@@ -251,12 +249,12 @@ export function renderEventView(evId, players) {
         <div class="p-id">
           <div class="p-rank">${i+1}</div>
           <div style="min-width:0">
-            <div class="p-name">@${p.displayName}</div>
+            <div class="p-name">@${escapeHtml(p.displayName)}</div>
             ${t?`<div class="p-value">Valore squad €${(t.value/1e6).toFixed(1)}M${boosterTags(t)}</div>`:''}
           </div>
         </div>
         <div class="p-total">
-          <div class="p-total-num">${p.total}</div>
+          <div class="p-total-num">${escapeHtml(p.total)}</div>
           <div class="p-total-lbl">PUNTI</div>
         </div>
       </div>`;
@@ -281,7 +279,7 @@ export function renderEventView(evId, players) {
         const factor = isBoosted ? 2 : 1;
         if (!e) {
           h += `<tr>
-            <td><span class="star-g">★</span>${r.firstName} ${r.lastName}${isBoosted?'<span class="boost-tag">2X</span>':''}</td>
+            <td><span class="star-g">★</span>${escapeHtml(r.firstName)} ${escapeHtml(r.lastName)}${isBoosted?'<span class="boost-tag">2X</span>':''}</td>
             <td>—</td><td>—</td><td>—</td><td>—</td>
           </tr>`;
           return;
@@ -292,7 +290,7 @@ export function renderEventView(evId, players) {
         const tot = (e.points || 0) * factor;
         sumQ += q; sumS += sp; sumR += ra; sumT += tot;
         h += `<tr>
-          <td><span class="star-g">★</span>${r.firstName} ${r.lastName}${isBoosted?'<span class="boost-tag">2X</span>':''}</td>
+          <td><span class="star-g">★</span>${escapeHtml(r.firstName)} ${escapeHtml(r.lastName)}${isBoosted?'<span class="boost-tag">2X</span>':''}</td>
           <td>${fmt(q)}</td><td>${fmt(sp)}</td><td>${fmt(ra)}</td><td>${fmt(tot)}</td>
         </tr>`;
       });
@@ -307,7 +305,7 @@ export function renderEventView(evId, players) {
         const tag = '<span class="boost-tag">EXTRA · GOLDEN</span>';
         if (!e) {
           h += `<tr>
-            <td><span class="star-g">★</span>${r.firstName} ${r.lastName}${tag}</td>
+            <td><span class="star-g">★</span>${escapeHtml(r.firstName)} ${escapeHtml(r.lastName)}${tag}</td>
             <td>—</td><td>—</td><td>—</td><td>—</td>
           </tr>`;
           return;
@@ -318,7 +316,7 @@ export function renderEventView(evId, players) {
         const tot = (e.points || 0) * factor;
         sumQ += q; sumS += sp; sumR += ra; sumT += tot;
         h += `<tr>
-          <td><span class="star-g">★</span>${r.firstName} ${r.lastName}${tag}</td>
+          <td><span class="star-g">★</span>${escapeHtml(r.firstName)} ${escapeHtml(r.lastName)}${tag}</td>
           <td>${fmt(q)}</td><td>${fmt(sp)}</td><td>${fmt(ra)}</td><td>${fmt(tot)}</td>
         </tr>`;
       });
@@ -330,7 +328,7 @@ export function renderEventView(evId, players) {
         if (!r) return;
         if (!e) {
           h += `<tr class="silver">
-            <td><span class="star-s">☆</span>${r.firstName} ${r.lastName}</td>
+            <td><span class="star-s">☆</span>${escapeHtml(r.firstName)} ${escapeHtml(r.lastName)}</td>
             <td>—</td><td>—</td><td>—</td><td>—</td>
           </tr>`;
           return;
@@ -342,7 +340,7 @@ export function renderEventView(evId, players) {
         const tot = (e.points || 0) * factor;
         sumQ += q; sumS += sp; sumR += ra; sumT += tot;
         h += `<tr class="silver">
-          <td><span class="star-s">☆</span>${r.firstName} ${r.lastName}</td>
+          <td><span class="star-s">☆</span>${escapeHtml(r.firstName)} ${escapeHtml(r.lastName)}</td>
           <td>${fmt(q)}</td><td>${fmt(sp)}</td><td>${fmt(ra)}</td><td>${fmt(tot)}</td>
         </tr>`;
       });
@@ -353,7 +351,7 @@ export function renderEventView(evId, players) {
         const pts = (c?.stats?.events?.[evId]?.points || 0) * teamFactor;
         sumT += pts;
         h += `<tr class="const">
-          <td><span class="ico">🏭</span>${c?.name || 'Costruttore'}</td>
+          <td><span class="ico">🏭</span>${escapeHtml(c?.name || 'Costruttore')}</td>
           <td>—</td><td>—</td><td>—</td><td>${fmt(pts)}</td>
         </tr>`;
       });
@@ -364,7 +362,7 @@ export function renderEventView(evId, players) {
         const pts = (s?.stats?.events?.[evId]?.points || 0) * teamFactor;
         sumT += pts;
         h += `<tr class="squad">
-          <td><span class="ico">🏁</span>${s?.name || 'Team'}</td>
+          <td><span class="ico">🏁</span>${escapeHtml(s?.name || 'Team')}</td>
           <td>—</td><td>—</td><td>—</td><td>${fmt(pts)}</td>
         </tr>`;
       });

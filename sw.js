@@ -1,9 +1,9 @@
-const CACHE_NAME = 'boxbox-v19';
+const CACHE_NAME = 'boxbox-public-v20';
 const SHELL = [
   '/', '/manifest.webmanifest?v=17', '/icon-192.png?v=17', '/icon-512.png?v=17', '/favicon.ico',
   '/styles.css',
   '/format.js', '/state.js', '/data.js', '/selectors.js', '/analysis.js',
-  '/boosters.js',
+  '/boosters.js', '/event-order.js',
   '/countdown.js', '/ui.js', '/tab-home.js', '/tab-standings.js', '/tab-fantasy.js',
   '/tab-other.js', '/pull-to-refresh.js', '/notifications.js', '/auto-refresh.js', '/main.js',
 ];

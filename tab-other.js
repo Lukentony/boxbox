@@ -1,4 +1,5 @@
 import { scheduleAutoRefresh } from './auto-refresh.js';
+import { escapeHtml } from './format.js';
 import { DATA } from './state.js';
 import { animateChildren, setTopbar } from './ui.js';
 
@@ -169,11 +170,11 @@ export function renderOtherCategory(catId) {
     riders.forEach((r, i) => {
       const medal = r.pos === 1 ? '🥇' : r.pos === 2 ? '🥈' : r.pos === 3 ? '🥉' : '';
       h += `<tr class="${i===0?'is-leader':''}">
-        <td class="user"><span class="pos">${r.pos}</span>${medal}</td>
-        <td>${r.rider}</td>
-        <td style="color:var(--text-dim);font-size:12px">${r.bike}</td>
-        <td style="color:var(--text-faint);font-size:11px">${r.team}</td>
-        <td class="tot">${r.totalPoints}</td>
+        <td class="user"><span class="pos">${escapeHtml(r.pos)}</span>${medal}</td>
+        <td>${escapeHtml(r.rider)}</td>
+        <td style="color:var(--text-dim);font-size:12px">${escapeHtml(r.bike)}</td>
+        <td style="color:var(--text-faint);font-size:11px">${escapeHtml(r.team)}</td>
+        <td class="tot">${escapeHtml(r.totalPoints)}</td>
       </tr>`;
     });
     h += `</tbody></table></div>`;
@@ -182,10 +183,10 @@ export function renderOtherCategory(catId) {
       h += `<div style="font-size:10px;color:var(--text-faint);margin-top:6px;text-align:center">Fonte: Wikipedia · aggiornato ${d.toLocaleDateString('it-IT')} ${d.toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit'})}</div>`;
     }
   } else {
-    h += `<div class="card"><div class="card-h"><span class="card-t">Classifica ${catName}</span></div>`;
+    h += `<div class="card"><div class="card-h"><span class="card-t">Classifica ${escapeHtml(catName)}</span></div>`;
     h += `<div class="empty" style="padding:24px">
       <div style="font-size:24px;margin-bottom:8px">🔌</div>
-      <div>Dati ${catName} non disponibili.</div>
+      <div>Dati ${escapeHtml(catName)} non disponibili.</div>
       <div style="font-size:12px;color:var(--text-faint);margin-top:6px">I dati vengono da Wikipedia. Se il campionato 2026 non è ancora iniziato, la pagina potrebbe non esistere.</div>
     </div>`;
     h += `</div>`;
