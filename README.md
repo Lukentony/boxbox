@@ -31,6 +31,15 @@ pubbliche/autenticate di `fantasy.motogp.com`: rispetta i loro Termini di Serviz
 - Notifiche in-app (Notification API) durante i weekend di gara
 - PWA installabile, funzionamento offline via service worker
 
+## Anteprime
+
+Immagini generate da `scraper/test-browser.mjs` con dati sintetici: nessun nome di giocatore reale,
+nessuna richiesta a servizi esterni. Altre viste in `docs/verifiche/`.
+
+| Home | Live | Fantasy |
+| --- | --- | --- |
+| <img src="docs/verifiche/home-mobile.png" width="250" alt="Home: GP in corso, top 3 di stagione, leader fantasy"> | <img src="docs/verifiche/live-mobile.png" width="250" alt="Live: sessioni del weekend e tabellone della sessione in corso"> | <img src="docs/verifiche/fantasy-mobile.png" width="250" alt="Fantasy: andamento punti per GP e prezzi dei piloti"> |
+
 ## Stack
 
 - **Frontend**: HTML/CSS/JS vanilla, **ES module nativi** (`<script type="module">`,
