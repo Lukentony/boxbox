@@ -38,7 +38,7 @@
   --shadow-card: 0 1px 0 oklch(1 0 0 / 0.05) inset, 0 12px 24px -16px oklch(0 0 0 / 0.8);
 }
 
-html, body { height:100%; background:var(--bg); }
+html, body { height:100%; background:var(--bg); -webkit-text-size-adjust: 100%; }
 body {
   color: var(--text);
   font-family: var(--f-display);
@@ -55,7 +55,7 @@ body {
   max-width: 480px;
   margin: 0 auto;
   min-height: 100dvh;
-  padding-bottom: 80px;
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
   position: relative;
   /* sottile pattern racing — strisce diagonali sullo sfondo */
   background:
@@ -66,12 +66,20 @@ body {
 /* ─── Topbar sticky ─── */
 .topbar {
   position: sticky; top: 0; z-index: 50;
-  padding: 14px 20px 12px;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 20px 12px;
   background: linear-gradient(180deg, var(--bg) 70%, transparent);
   display: flex; align-items: flex-end; justify-content: space-between;
   gap: 12px;
 }
 .topbar-l { display: flex; flex-direction: column; }
+.topbar-r { display: flex; align-items: center; gap: 8px; }
+.topbar-btn {
+  background: none; border: none; cursor: pointer; padding: 0;
+  width: 44px; height: 44px; display: grid; place-items: center;
+  color: var(--text-faint);
+}
+.topbar-btn svg { width: 20px; height: 20px; }
+.topbar-btn.is-active { color: var(--accent); }
 .eyebrow {
   font-family: var(--f-mono);
   font-size: 10px; font-weight: 500;
@@ -187,7 +195,7 @@ body {
   position: relative;
   background: var(--surface);
   border-radius: var(--r-lg);
-  padding: 16px 18px;
+  padding: 14px 16px;
   margin-bottom: 12px;
   box-shadow: var(--shadow-card);
   overflow: hidden;
@@ -200,7 +208,7 @@ body {
 
 .card-h {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 12px; gap: 12px;
+  margin-bottom: 10px; gap: 12px;
 }
 .card-t {
   font-family: var(--f-mono);
@@ -215,6 +223,9 @@ body {
   color: var(--text-dim);
   letter-spacing: 0.06em;
 }
+/* Intestazioni che devono restare su una riga (es. tabellone live: categoria +
+   sessione a sinistra, orario di aggiornamento a destra). */
+.card-meta.nowrap { white-space: nowrap; flex-shrink: 0; }
 
 /* ─── Hero NEXT GP card ─── */
 .hero {
@@ -222,8 +233,8 @@ body {
     radial-gradient(ellipse 100% 80% at 100% 0%, var(--accent-soft), transparent 60%),
     linear-gradient(180deg, oklch(0.20 0.012 25), var(--surface));
   border-radius: var(--r-lg);
-  padding: 20px 20px 22px;
-  margin-bottom: 14px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
   position: relative;
   overflow: hidden;
 }
@@ -242,11 +253,11 @@ body {
 }
 .hero-r {
   display: flex; align-items: center; gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 .hero-round {
   font-family: var(--f-mono);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--accent);
   letter-spacing: 0.14em;
@@ -260,16 +271,16 @@ body {
   font-family: var(--f-display);
   font-weight: 900;
   font-style: italic;
-  font-size: 38px;
+  font-size: 27px;
   line-height: 0.95;
   letter-spacing: -0.02em;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
   text-transform: uppercase;
 }
 .hero-circuit {
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--text-dim);
-  margin-bottom: 18px;
+  margin-bottom: 10px;
   letter-spacing: 0.01em;
 }
 .cd {
@@ -306,25 +317,46 @@ body {
   padding: 2px 4px;
   opacity: 0.5;
 }
+/* Riga di chiarimento sotto il countdown: a cosa si riferisce e quando. */
+.cd-nota {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+/* Stato "IN CORSO": una riga compatta, non i grandi numeri del countdown.
+   Stesso markup di .cd, usato da Home e Live (heroHtml). */.cd-u--stato { flex-direction: row; align-items: baseline; gap: 8px; }
+.cd-n--stato {
+  font-size: 21px;
+  letter-spacing: 0.02em;
+  padding: 0;
+  background: none;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  color: var(--accent);
+  -webkit-text-fill-color: var(--accent);
+}
 
 /* ─── Rider plate row ─── */
 .row {
   display: flex; align-items: center; gap: 12px;
-  padding: 10px 0;
+  padding: 7px 0;
   border-bottom: 1px solid var(--hairline);
 }
 .row:last-child { border-bottom: none; }
-.row:first-child { padding-top: 4px; }
+.row:first-child { padding-top: 2px; }
 
 .plate {
-  width: 38px; height: 38px;
+  width: 34px; height: 34px;
   background: var(--surface-2);
   border-radius: 6px;
   display: grid; place-items: center;
   font-family: var(--f-display);
   font-weight: 800;
   font-style: italic;
-  font-size: 16px;
+  font-size: 15px;
   font-variant-numeric: tabular-nums;
   color: var(--text);
   flex-shrink: 0;
@@ -359,7 +391,7 @@ body {
 .row-name {
   font-family: var(--f-display);
   font-weight: 700;
-  font-size: 15px;
+  font-size: 14px;
   letter-spacing: -0.005em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
@@ -463,7 +495,7 @@ body {
   font-weight: 700;
   font-size: 13px;
   color: var(--text-faint);
-  padding: 10px 0;
+  padding: 12px 0;
   margin-right: 22px;
   letter-spacing: 0.02em;
   position: relative;
@@ -474,6 +506,11 @@ body {
   content: ''; position: absolute; left: 0; right: 0; bottom: -1px;
   height: 2px; background: var(--accent);
 }
+/* Classifiche ha cinque segmenti (Piloti, Costruttori, Team, Calendario, Altre
+   serie): a 320 px la barra scorre in orizzontale invece di comprimersi. */
+.seg--scroll { overflow-x: auto; scrollbar-width: none; padding-bottom: 1px; }
+.seg--scroll::-webkit-scrollbar { display: none; }
+.seg--scroll .seg-btn { flex-shrink: 0; white-space: nowrap; }
 
 /* ─── Calendar timeline ─── */
 .cal-row {
@@ -490,7 +527,7 @@ body {
   padding: 5px 9px; border-radius: 999px;
   border: 1px solid oklch(from var(--accent) l c h / 0.4);
 }
-.cal-row:not([data-resgp]) { cursor: default; }
+.cal-row:not([data-resgp]):not([data-gpprog]):not([data-sess]) { cursor: default; }
 .cal-row:active { background: var(--surface); border-radius: 6px; }
 .cal-rail {
   width: 14px; display: flex; flex-direction: column; align-items: center;
@@ -896,13 +933,13 @@ body {
   -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--hairline);
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   z-index: 100;
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 .bnav-btn {
   background: none; border: none; cursor: pointer;
-  padding: 10px 0 14px;
+  padding: 9px 0 12px;
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   font-family: var(--f-display);
   color: var(--text-faint);
@@ -921,8 +958,12 @@ body {
 .bnav-lbl {
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ─── Loading / empty ─── */
@@ -938,7 +979,7 @@ body {
 .fade-pad { height: 24px; }
 
 .ptr {
-  position: fixed; top: 0; left: 0; right: 0;
+  position: fixed; top: env(safe-area-inset-top, 0px); left: 0; right: 0;
   max-width: 480px; margin: 0 auto;
   height: 0; overflow: hidden;
   display: flex; align-items: center; justify-content: center;
@@ -961,7 +1002,7 @@ body {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .freshness {
-  position: fixed; top: 60px; right: 20px;
+  position: absolute; top: calc(60px + env(safe-area-inset-top, 0px)); right: 20px;
   max-width: 480px;
   font-family: var(--f-mono);
   font-size: 9px;
@@ -1020,7 +1061,60 @@ body {
   letter-spacing: 0.06em;
   margin-top: auto;
 }
+/* ─── Scorciatoie Home: tile 2×2, icone SVG come la barra in basso ─── */
+.scorciatoie {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  margin-bottom: 14px;
+}
+.scorciatoia {
+  display: flex; flex-direction: column; align-items: flex-start;
+  background: var(--surface);
+  border: 0; border-radius: var(--r-md);
+  padding: 11px 12px;
+  font-family: var(--f-display);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+}
+.scorciatoia::before {
+  content: ''; position: absolute; left: 10px; right: 10px; top: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.10) 30%, oklch(1 0 0 / 0.10) 70%, transparent);
+}
+.scorciatoia-ico { color: var(--accent); width: 18px; height: 18px; display: block; }
+.scorciatoia-ico svg { width: 18px; height: 18px; display: block; }
+.scorciatoia-nome { font-size: 13px; font-weight: 700; letter-spacing: -0.005em; margin-top: 4px; }
+.scorciatoia-desc {
+  font-family: var(--f-mono);
+  font-size: 9.5px;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* ─── Touch: niente highlight di sistema, feedback :active uniforme ───
+   Su Android il tap mostrava il rettangolo grigio di sistema (brutto sopra gli
+   angoli arrotondati); su iOS il long-press apriva il menu di copia. Qui le due
+   piattaforme si comportano allo stesso modo e ogni elemento toccabile risponde. */
+button, .row, .news-card, .gp-chip, .cal-row, .leader-call, [data-vai], [data-rid] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+button:active, .row:active, .gp-chip:active, .cal-row:active,
+.leader-call:active, [data-vai]:active, [data-rid]:active { opacity: 0.72; }
+
 .news-more {
+  display: block;
+  width: 100%;
+  background: none;
+  border: 0;
+  line-height: inherit;
   text-align: center;
   padding: 8px;
   font-family: var(--f-mono);
@@ -1029,3 +1123,4 @@ body {
   letter-spacing: 0.1em;
   cursor: pointer;
 }
+.news-more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

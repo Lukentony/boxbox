@@ -1,7 +1,9 @@
 export const DATA = {};
 
-/* Navigazione principale persistita: un refresh (o riapertura della PWA) resta
-   sulla tab/GP/modalita' dove si era, invece di ripartire sempre da Home. */
+/* La navigazione vive nell'hash (ui.js): bbTab e' solo il seme letto quando
+   l'hash manca (avvio della PWA: start_url "/"). Il valore viene aggiornato a
+   ogni rotta per non farlo invecchiare, ma nessuno lo rilegge durante la
+   sessione: la rotta dell'hash vince sempre. */
 export let currentTab = localStorage.getItem('bbTab') || 'home';
 export let currentGp = localStorage.getItem('bbGp') || 'season';
 export let viewMode = localStorage.getItem('bbViewMode') || 'campionato';

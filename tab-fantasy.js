@@ -1,8 +1,9 @@
 import { riderPriceTrend, riderValue } from './analysis.js';
-import { boosterLabel, goldenRiderIds, riderDoubled, teamDoubled } from './boosters.js';
+import { boosterLabel, goldenRiderIds, riderDoubled, teamDoubled, teamEventScoring } from './boosters.js';
 import { startCountdown } from './countdown.js';
+import { frammento, nodo } from './dom.js';
 import { flagOf, fmtDate } from './format.js';
-import { activePlayers, effectiveStatus } from './selectors.js';
+import { activePlayers, avvioGp, effectiveStatus } from './selectors.js';
 import { DATA, currentGp, setCurrentGp } from './state.js';
 import { animateChildren } from './ui.js';
 
@@ -12,35 +13,47 @@ const fmt = (n) => {
   return Number.isInteger(r) ? String(r) : r.toFixed(1);
 };
 
-/* La regola dei booster vive in boosters.js: lo stesso modulo calcola i punti in
-   scraper/compute.mjs. Qui si produce solo l'HTML dei tag. */
-const escapeHtml = (s) => String(s).replace(/[&<>"]/g,
-  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const boosterTags = (team) => (team?.boosters || []).map((booster, i) =>
-  `<span class="boost-tag" style="margin-left:${i ? 4 : 0}px">${escapeHtml(boosterLabel(booster))}</span>`).join('');
+/* Cella "—" delle tabelle: un nodo nuovo ogni volta (un nodo non puo' stare in
+   due posti). */
+const cellaVuota = () => nodo('td', null, '—');
+
+/* I tag dei booster e la regola di chi raddoppia vivono in boosters.js: le
+   stesse funzioni calcolano i punti in compute.mjs. */
+const boosterTags = (team) => (team.boosters || []).map((booster, index) =>
+  nodo('span', { class: 'boost-tag', style: 'margin-left:' + (index ? '4px' : '0') }, boosterLabel(booster)));
 
 /* ═════════════════════════════════════════════════════════
    NAVIGAZIONE TAB
    ═════════════════════════════════════════════════════════ */
-export function pricesCardHtml() {
+export function pricesCard() {
   const nm = r => (r.firstName ? r.firstName[0] + '. ' : '') + (r.lastName || '');
   const rs = (DATA.riders || []).filter(r => r.status !== 'disqualified' && r.stats?.starts > 0)
     .map(r => ({ r, pt: riderPriceTrend(r), v: riderValue(r) }));
   const up = rs.filter(x => x.pt.dir > 0).sort((a, b) => b.pt.deltaM - a.pt.deltaM).slice(0, 5);
   const down = rs.filter(x => x.pt.dir < 0).sort((a, b) => a.pt.deltaM - b.pt.deltaM).slice(0, 5);
   const value = rs.slice().sort((a, b) => b.v.perM - a.v.perM).slice(0, 5);
-  const line = (left, right) => '<div style="display:flex;justify-content:space-between"><span>' + left + '</span><span>' + right + '</span></div>';
-  let h = '';
-  h += '<div class="f-subtitle" style="margin-top:16px"><span>Prezzi & valore</span></div>';
-  h += '<div class="card"><div style="font-size:12px;line-height:1.85;padding:2px">';
-  h += '<div style="color:var(--gold);font-weight:700;margin-bottom:2px">▲ In salita</div>';
-  up.forEach(x => h += line(nm(x.r), '<span style="color:var(--gold)">+' + x.pt.deltaM.toFixed(1) + 'M</span> <span style="color:var(--text-dim)">→ ' + x.pt.lastM.toFixed(1) + 'M</span>'));
-  h += '<div style="color:var(--accent);font-weight:700;margin:8px 0 2px">▼ In calo</div>';
-  down.forEach(x => h += line(nm(x.r), '<span style="color:var(--accent)">' + x.pt.deltaM.toFixed(1) + 'M</span> <span style="color:var(--text-dim)">→ ' + x.pt.lastM.toFixed(1) + 'M</span>'));
-  h += '<div style="color:var(--text);font-weight:700;margin:8px 0 2px">★ Miglior valore (punti/M)</div>';
-  value.forEach(x => h += line(nm(x.r), '<b>' + x.v.perM.toFixed(1) + '</b> pt/M <span style="color:var(--text-dim)">· ' + (x.r.cost / 1e6).toFixed(1) + 'M</span>'));
-  h += '</div></div>';
-  return h;
+  const line = (sinistra, ...destra) => nodo('div', { style: 'display:flex;justify-content:space-between' },
+    nodo('span', null, sinistra), nodo('span', null, destra));
+
+  return frammento(
+    nodo('div', { class: 'f-subtitle', style: 'margin-top:16px' }, nodo('span', null, 'Prezzi & valore')),
+    nodo('div', { class: 'card' },
+      nodo('div', { style: 'font-size:12px;line-height:1.85;padding:2px' },
+        nodo('div', { style: 'color:var(--gold);font-weight:700;margin-bottom:2px' }, '▲ In salita'),
+        up.map(x => line(nm(x.r),
+          nodo('span', { style: 'color:var(--gold)' }, '+' + x.pt.deltaM.toFixed(1) + 'M'),
+          ' ',
+          nodo('span', { style: 'color:var(--text-dim)' }, '→ ' + x.pt.lastM.toFixed(1) + 'M'))),
+        nodo('div', { style: 'color:var(--accent);font-weight:700;margin:8px 0 2px' }, '▼ In calo'),
+        down.map(x => line(nm(x.r),
+          nodo('span', { style: 'color:var(--accent)' }, x.pt.deltaM.toFixed(1) + 'M'),
+          ' ',
+          nodo('span', { style: 'color:var(--text-dim)' }, '→ ' + x.pt.lastM.toFixed(1) + 'M'))),
+        nodo('div', { style: 'color:var(--text);font-weight:700;margin:8px 0 2px' }, '★ Miglior valore (punti/M)'),
+        value.map(x => line(nm(x.r),
+          nodo('b', null, x.v.perM.toFixed(1)),
+          ' pt/M ',
+          nodo('span', { style: 'color:var(--text-dim)' }, '· ' + (x.r.cost / 1e6).toFixed(1) + 'M'))))));
 }
 
 /* ═════════════════════════════════════════════════════════
@@ -52,33 +65,31 @@ export function renderFantasy() {
   const completed = DATA.events
     .filter(e => DATA.breakdown.byEvent && DATA.breakdown.byEvent[e.id]);
 
-  let h = '';
   /* GP selector */
-  h += `<div class="gp-rail">
-    <div class="gp-chip gp-chip--season ${currentGp==='season'?'is-active':''}" data-gp="season">
-      <div class="gp-chip-flag">🏆</div>
-      <div class="gp-chip-r">TUTTI</div>
-      <div class="gp-chip-name">STAG</div>
-    </div>`;
-  completed.forEach(e => {
-    const isLive = effectiveStatus(e) === 'active';
-    const liveR = '<span class="chip-dot"></span>LIVE';
-    const isUpcoming = DATA.breakdown.byEvent?.[e.id]?.upcoming;
-    h += `<div class="gp-chip ${isLive?'gp-chip--live':''} ${isUpcoming?'gp-chip--upcoming':''} ${String(currentGp)===String(e.id)?'is-active':''}" data-gp="${e.id}">
-      <div class="gp-chip-flag">${flagOf(e)}</div>
-      <div class="gp-chip-r">${isLive?liveR:'R'+(e.order||e.id)}</div>
-      <div class="gp-chip-name">${e.shortName||e.displayedName.slice(0,3).toUpperCase()}</div>
-    </div>`;
-  });
-  h += `</div>`;
+  const rail = nodo('div', { class: 'gp-rail' },
+    nodo('div', {
+      class: 'gp-chip gp-chip--season' + (currentGp === 'season' ? ' is-active' : ''),
+      'data-gp': 'season',
+    },
+      nodo('div', { class: 'gp-chip-flag' }, '🏆'),
+      nodo('div', { class: 'gp-chip-r' }, 'TUTTI'),
+      nodo('div', { class: 'gp-chip-name' }, 'STAG')),
+    completed.map(e => {
+      const isLive = effectiveStatus(e) === 'active';
+      const isUpcoming = DATA.breakdown.byEvent?.[e.id]?.upcoming;
+      const classi = ['gp-chip'];
+      if (isLive) classi.push('gp-chip--live');
+      if (isUpcoming) classi.push('gp-chip--upcoming');
+      if (String(currentGp) === String(e.id)) classi.push('is-active');
+      return nodo('div', { class: classi.join(' '), 'data-gp': e.id },
+        nodo('div', { class: 'gp-chip-flag' }, flagOf(e)),
+        nodo('div', { class: 'gp-chip-r' },
+          isLive ? [nodo('span', { class: 'chip-dot' }), 'LIVE'] : 'R' + (e.order || e.id)),
+        nodo('div', { class: 'gp-chip-name' }, e.shortName || e.displayedName.slice(0, 3).toUpperCase()));
+    }));
 
-  if (currentGp === 'season') {
-    h += renderSeasonView(players);
-  } else {
-    h += renderEventView(Number(currentGp), players);
-  }
-  h += `<div class="fade-pad"></div>`;
-  root.innerHTML = h;
+  const vista = currentGp === 'season' ? renderSeasonView(players) : renderEventView(Number(currentGp), players);
+  root.replaceChildren(rail, vista, nodo('div', { class: 'fade-pad' }));
   animateChildren(root);
 
   root.querySelectorAll('.gp-chip').forEach(c => {
@@ -91,32 +102,19 @@ export function renderFantasy() {
 
 export function renderSeasonView(players) {
   const leader = players[0];
-  if (!leader) return '<div class="empty">Nessun dato fantasy disponibile.</div>';
-
-  let h = '';
+  if (!leader) return nodo('div', { class: 'empty' }, 'Nessun dato fantasy disponibile.');
 
   const completedGPs = DATA.events.filter(e => DATA.breakdown.byEvent && DATA.breakdown.byEvent[e.id]);
 
-  h += `<div class="f-subtitle">
-    <span>Andamento per GP</span>
-    <span class="f-stake">${players.length} giocatori</span>
-  </div>`;
-  players.forEach((p, i) => {
-    const barMax = leader.overallPoints || 1;
-    const pct = Math.round((p.overallPoints / barMax) * 100);
-    const gap = i === 0 ? '' : ` <span style="color:var(--text-faint);font-size:11px">(-${(leader.overallPoints - p.overallPoints).toFixed(1)})</span>`;
+  const carte = players.map((p, i) => {
+    const gap = i === 0 ? '' : nodo('span', { style: 'color:var(--text-faint);font-size:11px' },
+      '(-' + (leader.overallPoints - p.overallPoints).toFixed(1) + ')');
+    const apiAdjustment = p.season?.apiAdjustment || 0;
+    const adjustment = apiAdjustment
+      ? nodo('span', null, 'Rettifica API: ' + (apiAdjustment > 0 ? '+' : '') + apiAdjustment.toFixed(1))
+      : null;
 
-    h += `<div class="card" style="padding:12px 14px;margin-bottom:8px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-family:var(--f-mono);font-size:12px;color:${i===0?'var(--gold)':'var(--text-faint)'};font-weight:700;width:18px">${i+1}</span>
-          <span style="font-family:var(--f-display);font-weight:800;font-style:italic;font-size:15px;${i===0?'color:var(--gold)':''}">@${p.displayName}</span>
-        </div>
-        <span style="font-family:var(--f-mono);font-weight:700;font-size:16px;${i===0?'color:var(--gold)':''}">${p.overallPoints}${gap}</span>
-      </div>
-      <div style="display:flex;gap:2px;height:20px;margin-bottom:4px">`;
-
-    completedGPs.forEach(ev => {
+    const barre = completedGPs.map(ev => {
       const evData = p.events?.[ev.id];
       const evPts = evData?.total || 0;
       const maxEvPts = Math.max(...players.map(pl => pl.events?.[ev.id]?.total || 0), 1);
@@ -125,264 +123,247 @@ export function renderSeasonView(players) {
       const gpStandings = (DATA.breakdown.byEvent?.[ev.id]?.standings) || [];
       const gpPos = gpStandings.findIndex(s => s.displayName === p.displayName);
       const color = gpPos === 0 ? 'var(--gold)' : gpPos === 1 ? 'var(--silver)' : gpPos === 2 ? 'var(--bronze)' : 'var(--surface-3)';
-      const medals = ['🥇','🥈','🥉',''];
-      h += `<div style="flex:1;display:flex;align-items:flex-end" title="${ev.displayedName}: ${gpPos >= 0 ? (gpPos+1)+'° posto' : '—'} (${evPts}pt)">
-        <div style="width:100%;height:${barH}px;background:${color};border-radius:2px"></div>
-      </div>`;
+      return nodo('div', {
+        style: 'flex:1;display:flex;align-items:flex-end',
+        title: ev.displayedName + ': ' + (gpPos >= 0 ? (gpPos + 1) + '° posto' : '—') + ' (' + evPts + 'pt)',
+      },
+        nodo('div', { style: 'width:100%;height:' + barH + 'px;background:' + color + ';border-radius:2px' }));
     });
 
-    h += `</div>
-      <div style="display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:9px;color:var(--text-faint);letter-spacing:.06em">
-        <span>Q: ${p.season?.q ?? 0}</span>
-        <span>Sprint: ${p.season?.sprint ?? 0}</span>
-        <span>Gara: ${p.season?.race ?? 0}</span>
-        <span>Bonus: ${p.season?.extra ?? 0}</span>
-        <span>Team: €${(p.teamValue/1e6).toFixed(1)}M</span>
-      </div>
-    </div>`;
+    return nodo('div', { class: 'card', style: 'padding:12px 14px;margin-bottom:8px' },
+      nodo('div', { style: 'display:flex;align-items:center;justify-content:space-between;margin-bottom:6px' },
+        nodo('div', { style: 'display:flex;align-items:center;gap:8px' },
+          nodo('span', {
+            style: 'font-family:var(--f-mono);font-size:12px;color:' + (i === 0 ? 'var(--gold)' : 'var(--text-faint)') + ';font-weight:700;width:18px',
+          }, String(i + 1)),
+          nodo('span', {
+            style: 'font-family:var(--f-display);font-weight:800;font-style:italic;font-size:15px;' + (i === 0 ? 'color:var(--gold)' : ''),
+          }, '@' + p.displayName)),
+        nodo('span', {
+          style: 'font-family:var(--f-mono);font-weight:700;font-size:16px;' + (i === 0 ? 'color:var(--gold)' : ''),
+        }, String(p.overallPoints) + (gap ? ' ' : ''), gap)),
+      nodo('div', { style: 'display:flex;gap:2px;height:20px;margin-bottom:4px' }, barre),
+      nodo('div', {
+        style: 'display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px;font-family:var(--f-mono);font-size:9px;color:var(--text-faint);letter-spacing:.06em',
+      },
+        nodo('span', null, 'Q: ' + (p.season?.q ?? 0)),
+        nodo('span', null, 'Sprint: ' + (p.season?.sprint ?? 0)),
+        nodo('span', null, 'Gara: ' + (p.season?.race ?? 0)),
+        nodo('span', null, 'Bonus: ' + (p.season?.extra ?? 0)),
+        adjustment,
+        nodo('span', null, 'Team: €' + (p.teamValue / 1e6).toFixed(1) + 'M')));
   });
 
-  h += pricesCardHtml();
-  return h;
+  return frammento(
+    nodo('div', { class: 'f-subtitle' },
+      nodo('span', null, 'Andamento per GP'),
+      nodo('span', { class: 'f-stake' }, players.length + ' giocatori')),
+    carte,
+    pricesCard());
 }
 
 // Recuperata 2026-08-08 (Claude): persa nella riscrittura dell'8/08 (commit 8f1f6f0), il backend
 // (compute.mjs) continuava a produrre il flag `upcoming` senza che nessuna UI lo consumasse.
 // Codice del 7/06 (commit 12ad823), invariato salvo dove annotato sotto.
-export function renderUpcomingEventView(evMeta, ev) {
+export function renderUpcomingEventView(evMeta, _ev) {
   const teams = DATA.allTeams?.teams?.[String(evMeta.id)] || {};
-  let h = '';
-  h += `<div class="f-subtitle">
-    <span>${flagOf(evMeta)} ${evMeta.displayedName.trim()}</span>
-    <span class="f-stake">R${evMeta.order || evMeta.id}</span>
-  </div>`;
-  h += `<div class="card" style="margin-bottom:12px">
-    <div class="card-h"><span class="card-t">🗓 Prossimo GP</span></div>
-    <div style="padding:0 16px 16px">
-      <div class="cd" id="cd-fantasy"></div>
-      <div style="font-family:var(--f-mono);font-size:11px;color:var(--text-faint);margin-top:6px">
-        ${evMeta.circuit} · Prima sessione ${fmtDate(evMeta.dateStart)}
-      </div>
-    </div>
-  </div>`;
+  const nodi = [];
+  nodi.push(nodo('div', { class: 'f-subtitle' },
+    nodo('span', null, flagOf(evMeta) + ' ' + evMeta.displayedName.trim()),
+    nodo('span', { class: 'f-stake' }, 'R' + (evMeta.order || evMeta.id))));
+  nodi.push(nodo('div', { class: 'card', style: 'margin-bottom:12px' },
+    nodo('div', { class: 'card-h' }, nodo('span', { class: 'card-t' }, '🗓 Prossimo GP')),
+    nodo('div', { style: 'padding:0 16px 16px' },
+      nodo('div', { class: 'cd', id: 'cd-fantasy' }),
+      nodo('div', { style: 'font-family:var(--f-mono);font-size:11px;color:var(--text-faint);margin-top:6px' },
+        evMeta.circuit + ' · Prima sessione ' + fmtDate(evMeta.dateStart)))));
+
   const playerNames = Object.keys(teams);
   if (playerNames.length) {
     playerNames.forEach(name => {
       const t = teams[name];
       if (!t) return;
-      h += `<div class="p-card"><div class="p-head"><div class="p-id"><div style="min-width:0">
-        <div class="p-name">@${name}</div>
-        <div class="p-value">Valore squad €${((t.value||0)/1e6).toFixed(1)}M${boosterTags(t)}</div>
-      </div></div></div><div class="p-body"><div style="padding:0 0 8px">`;
-      (t.riders||[]).forEach(rid => {
+      const righe = [];
+      (t.riders || []).forEach(rid => {
         const r = DATA.riderById[rid]; if (!r) return;
         const isBoosted = riderDoubled(t, rid);
-        const pts = r.stats?.totalPoints||0;
-        h += `<div class="row"><div class="plate plate--gold"><span>${r.number||'?'}</span></div>
-          <div class="row-m"><div class="row-name">${r.firstName} ${r.lastName}${isBoosted?'<span class="boost-tag">2X</span>':''}</div>
-          <div class="row-sub">${DATA.constById[r.constructorId]?.name||''}</div></div>
-          <div class="row-pts" style="font-size:12px">${pts}<div class="pts-sub">stagione</div></div></div>`;
+        const pts = r.stats?.totalPoints || 0;
+        righe.push(nodo('div', { class: 'row' },
+          nodo('div', { class: 'plate plate--gold' }, nodo('span', null, r.number || '?')),
+          nodo('div', { class: 'row-m' },
+            nodo('div', { class: 'row-name' }, r.firstName + ' ' + r.lastName,
+              isBoosted ? nodo('span', { class: 'boost-tag' }, '2X') : null),
+            nodo('div', { class: 'row-sub' }, DATA.constById[r.constructorId]?.name || '')),
+          nodo('div', { class: 'row-pts', style: 'font-size:12px' }, pts,
+            nodo('div', { class: 'pts-sub' }, 'stagione'))));
       });
-      /* Golden: un pilota oro extra, fuori rosa, a punteggio pieno. */
       goldenRiderIds(t).forEach(rid => {
         const r = DATA.riderById[rid]; if (!r) return;
-        const pts = r.stats?.totalPoints||0;
-        h += `<div class="row"><div class="plate plate--gold"><span>${r.number||'?'}</span></div>
-          <div class="row-m"><div class="row-name">${r.firstName} ${r.lastName}<span class="boost-tag">EXTRA · GOLDEN</span></div>
-          <div class="row-sub">${DATA.constById[r.constructorId]?.name||''} · Pilota extra</div></div>
-          <div class="row-pts" style="font-size:12px">${pts}<div class="pts-sub">stagione</div></div></div>`;
+        const pts = r.stats?.totalPoints || 0;
+        righe.push(nodo('div', { class: 'row' },
+          nodo('div', { class: 'plate plate--gold' }, nodo('span', null, r.number || '?')),
+          nodo('div', { class: 'row-m' },
+            nodo('div', { class: 'row-name' }, r.firstName + ' ' + r.lastName,
+              nodo('span', { class: 'boost-tag' }, 'EXTRA · GOLDEN')),
+            nodo('div', { class: 'row-sub' }, (DATA.constById[r.constructorId]?.name || '') + ' · Pilota extra')),
+          nodo('div', { class: 'row-pts', style: 'font-size:12px' }, pts,
+            nodo('div', { class: 'pts-sub' }, 'stagione'))));
       });
-      (t.ridersSilver||[]).forEach(rid => {
+      (t.ridersSilver || []).forEach(rid => {
         const r = DATA.riderById[rid]; if (!r) return;
-        const pts = r.stats?.totalPoints||0;
-        h += `<div class="row silver"><div class="plate plate--silver"><span>${r.number||'?'}</span></div>
-          <div class="row-m"><div class="row-name">${r.firstName} ${r.lastName}</div>
-          <div class="row-sub">${DATA.constById[r.constructorId]?.name||''} · 50%</div></div>
-          <div class="row-pts" style="font-size:12px">${pts}<div class="pts-sub">stagione</div></div></div>`;
+        const pts = r.stats?.totalPoints || 0;
+        righe.push(nodo('div', { class: 'row silver' },
+          nodo('div', { class: 'plate plate--silver' }, nodo('span', null, r.number || '?')),
+          nodo('div', { class: 'row-m' },
+            nodo('div', { class: 'row-name' }, r.firstName + ' ' + r.lastName),
+            nodo('div', { class: 'row-sub' }, (DATA.constById[r.constructorId]?.name || '') + ' · 50%')),
+          nodo('div', { class: 'row-pts', style: 'font-size:12px' }, pts,
+            nodo('div', { class: 'pts-sub' }, 'stagione'))));
       });
-      (t.constructors||[]).forEach(cid => {
+      (t.constructors || []).forEach(cid => {
         const c = DATA.constById[cid]; if (!c) return;
-        h += `<div class="row"><div class="plate" style="background:var(--surface-3)"><span style="font-size:14px">🔧</span></div>
-          <div class="row-m"><div class="row-name">${c.name}</div><div class="row-sub">Costruttore</div></div></div>`;
+        righe.push(nodo('div', { class: 'row' },
+          nodo('div', { class: 'plate', style: 'background:var(--surface-3)' }, nodo('span', { style: 'font-size:14px' }, '🔧')),
+          nodo('div', { class: 'row-m' },
+            nodo('div', { class: 'row-name' }, c.name),
+            nodo('div', { class: 'row-sub' }, 'Costruttore'))));
       });
-      (t.squads||[]).forEach(sid => {
+      (t.squads || []).forEach(sid => {
         const s = DATA.squadById[sid]; if (!s) return;
-        h += `<div class="row"><div class="plate" style="background:var(--surface-3)"><span style="font-size:14px">🏔</span></div>
-          <div class="row-m"><div class="row-name">${s.name}</div><div class="row-sub">Team</div></div></div>`;
+        righe.push(nodo('div', { class: 'row' },
+          nodo('div', { class: 'plate', style: 'background:var(--surface-3)' }, nodo('span', { style: 'font-size:14px' }, '🏔')),
+          nodo('div', { class: 'row-m' },
+            nodo('div', { class: 'row-name' }, s.name),
+            nodo('div', { class: 'row-sub' }, 'Team'))));
       });
-      h += `</div></div></div>`;
+      nodi.push(nodo('div', { class: 'p-card' },
+        nodo('div', { class: 'p-head' },
+          nodo('div', { class: 'p-id' },
+            nodo('div', { style: 'min-width:0' },
+              nodo('div', { class: 'p-name' }, '@' + name),
+              nodo('div', { class: 'p-value' }, 'Valore squad €' + ((t.value || 0) / 1e6).toFixed(1) + 'M',
+                boosterTags(t))))),
+        nodo('div', { class: 'p-body' }, nodo('div', { style: 'padding:0 0 8px' }, righe))));
     });
   } else {
-    h += `<div class="empty">Dati squadra non ancora disponibili.</div>`;
+    nodi.push(nodo('div', { class: 'empty' }, 'Dati squadra non ancora disponibili.'));
   }
-  setTimeout(() => startCountdown(evMeta.dateStart, 'cd-fantasy'), 50);
-  return h;
+  const inizio = avvioGp(evMeta).iso;
+  if (inizio) setTimeout(() => startCountdown(inizio, 'cd-fantasy'), 50);
+  return frammento(nodi);
 }
 
-export function renderEventView(evId, players) {
+/* Righe della tabella di un GP.
+   Le voci e i loro punti sono quelli che la pipeline somma per il breakdown:
+   stessa funzione (teamEventScoring, dist/boosters.js), stessi numeri. Qui non
+   si ricalcola niente. Prima invece il disegno rifaceva il conto per conto suo
+   e su un GP con il booster 'super' le righe dei piloti restavano senza il x2
+   (mentre costruttore e squadra lo avevano), cosi' la riga Totale chiudeva a
+   104 dove la card diceva 151 -- evento 20, MALAYSIA, squadra di Lukentony.
+   L'ultima riga sono gli aggregati del GP letti dal breakdown, non una somma
+   rifatta qui: la tabella non puo' piu' contraddire il totale della card. */
+function righeEvento(team, evId, puntiGp) {
+  const voci = teamEventScoring(team, evId, {
+    riderById: DATA.riderById,
+    constrById: DATA.constById,
+    squadById: DATA.squadById,
+  }).lines;
+
+  /* Un pilota in rosa senza statistiche per quel GP resta in tabella con "—",
+     come nel gioco: la voce esiste, i punti sono zero. */
+  const cellePunti = (voce) => (voce.senzaDati
+    ? [cellaVuota(), cellaVuota(), cellaVuota(), cellaVuota()]
+    : [nodo('td', null, fmt(voce.q)), nodo('td', null, fmt(voce.sprint)),
+       nodo('td', null, fmt(voce.race)), nodo('td', null, fmt(voce.tot))]);
+
+  const righe = voci.map(voce => {
+    if (voce.tipo === 'constructor' || voce.tipo === 'squad') {
+      const costruttore = voce.tipo === 'constructor';
+      const nome = costruttore ? DATA.constById[voce.id]?.name : DATA.squadById[voce.id]?.name;
+      return nodo('tr', { class: costruttore ? 'const' : 'squad' },
+        nodo('td', null,
+          nodo('span', { class: 'ico' }, costruttore ? '🏭' : '👥'),
+          nome || (costruttore ? 'Costruttore' : 'Team'),
+          teamDoubled(team) ? nodo('span', { class: 'boost-tag' }, '2X') : null),
+        cellaVuota(), cellaVuota(), cellaVuota(), nodo('td', null, fmt(voce.tot)));
+    }
+
+    const r = DATA.riderById[voce.id];
+    const nome = r ? r.firstName + ' ' + r.lastName : '#' + voce.id;
+    /* Il 2X e' l'informazione che spiega perche' la riga conta piu' dei punti
+       del pilota: vale anche per l'argento, che il 'super' raddoppia. */
+    const isBoosted = riderDoubled(team, voce.id);
+    const tagGolden = voce.tipo === 'golden'
+      ? nodo('span', { class: 'boost-tag' }, 'EXTRA · GOLDEN')
+      : null;
+    const tag2X = isBoosted ? nodo('span', { class: 'boost-tag' }, '2X') : null;
+    const argento = voce.tipo === 'silver';
+    return nodo('tr', argento ? { class: 'silver' } : null,
+      nodo('td', null,
+        nodo('span', { class: argento ? 'star-s' : 'star-g' }, argento ? '☆' : '★'),
+        nome, tagGolden, tag2X),
+      ...cellePunti(voce));
+  });
+
+  righe.push(nodo('tr', { class: 'total' },
+    nodo('td', null, 'Totale'),
+    nodo('td', null, fmt(puntiGp.q)), nodo('td', null, fmt(puntiGp.sprint)),
+    nodo('td', null, fmt(puntiGp.race)), nodo('td', null, fmt(puntiGp.total))));
+  return righe;
+}
+
+export function renderEventView(evId, _players) {
   const ev = DATA.breakdown.byEvent[evId];
   const evMeta = DATA.events.find(e => e.id === evId);
   // Bugfix 2026-08-08 (Claude): guardia evMeta ripristinata (mancava, evMeta.circuit sotto
   // esploderebbe) e dispatch upcoming spostato PRIMA della guardia su standings vuote -- un GP
   // upcoming ha standings vuote per definizione, cadeva nel ramo "Nessun dato per questo GP".
   // In 12ad823 la guardia evMeta faceva `root.innerHTML = ...; return;` ma `root` non e' definito
-  // in questo scope (bug latente mai emerso): qui si ritorna la stringa vuota come le altre guardie.
+  // in questo scope (bug latente mai emerso): qui si ritorna lo stato vuoto come le altre guardie.
   if (!evMeta) {
-    return '<div class="empty">Dati evento non disponibili</div>';
+    return nodo('div', { class: 'empty' }, 'Dati evento non disponibili');
   }
   if (ev?.upcoming) return renderUpcomingEventView(evMeta, ev);
   if (!ev || !ev.standings?.length) {
-    return '<div class="empty">Nessun dato per questo GP.</div>';
+    return nodo('div', { class: 'empty' }, 'Nessun dato per questo GP.');
   }
   const teams = DATA.allTeams?.teams?.[String(evId)] || {};
 
-  let h = '';
+  const carte = [];
   /* Header GP */
-  h += `<div class="f-subtitle">
-    <span>${flagOf(evMeta)} ${evMeta.displayedName.trim()} · ${fmtDate(evMeta.dateStart)}</span>
-    <span class="f-stake">R${evMeta.order||evMeta.id}</span>
-  </div>`;
+  carte.push(nodo('div', { class: 'f-subtitle' },
+    nodo('span', null, flagOf(evMeta) + ' ' + evMeta.displayedName.trim() + ' · ' + fmtDate(evMeta.dateStart)),
+    nodo('span', { class: 'f-stake' }, 'R' + (evMeta.order || evMeta.id))));
 
   /* Card per giocatore */
   ev.standings.forEach((p, i) => {
     const t = teams[p.displayName];
-    h += `<div class="p-card ${i===0?'is-leader':''}">
-      <div class="p-head">
-        <div class="p-id">
-          <div class="p-rank">${i+1}</div>
-          <div style="min-width:0">
-            <div class="p-name">@${p.displayName}</div>
-            ${t?`<div class="p-value">Valore squad €${(t.value/1e6).toFixed(1)}M${boosterTags(t)}</div>`:''}
-          </div>
-        </div>
-        <div class="p-total">
-          <div class="p-total-num">${p.total}</div>
-          <div class="p-total-lbl">PUNTI</div>
-        </div>
-      </div>`;
+    const card = nodo('div', { class: 'p-card' + (i === 0 ? ' is-leader' : '') },
+      nodo('div', { class: 'p-head' },
+        nodo('div', { class: 'p-id' },
+          nodo('div', { class: 'p-rank' }, String(i + 1)),
+          nodo('div', { style: 'min-width:0' },
+            nodo('div', { class: 'p-name' }, '@' + p.displayName),
+            t ? nodo('div', { class: 'p-value' }, 'Valore squad €' + (t.value / 1e6).toFixed(1) + 'M',
+              boosterTags(t)) : null)),
+        nodo('div', { class: 'p-total' },
+          nodo('div', { class: 'p-total-num' }, p.total),
+          nodo('div', { class: 'p-total-lbl' }, 'PUNTI'))));
 
     if (t) {
-      h += `<div class="p-body"><table class="p-tbl">
-        <thead><tr>
-          <th>Selezione</th>
-          <th>Q</th><th>Sprint</th><th>Gara</th><th>Tot</th>
-        </tr></thead>
-        <tbody>`;
-
-      let sumQ=0, sumS=0, sumR=0, sumT=0;
-      const teamFactor = teamDoubled(t) ? 2 : 1;
-
-      /* Gold riders */
-      (t.riders || []).forEach(rid => {
-        const r = DATA.riderById[rid];
-        const e = r?.stats?.events?.[evId];
-        if (!r) return;
-        const isBoosted = riderDoubled(t, rid);
-        const factor = isBoosted ? 2 : 1;
-        if (!e) {
-          h += `<tr>
-            <td><span class="star-g">★</span>${r.firstName} ${r.lastName}${isBoosted?'<span class="boost-tag">2X</span>':''}</td>
-            <td>—</td><td>—</td><td>—</td><td>—</td>
-          </tr>`;
-          return;
-        }
-        const q = (e.q2Points || e.q1Points || 0) * factor;
-        const sp = (e.sprintPoints || 0) * factor;
-        const ra = (e.finalPoints || 0) * factor;
-        const tot = (e.points || 0) * factor;
-        sumQ += q; sumS += sp; sumR += ra; sumT += tot;
-        h += `<tr>
-          <td><span class="star-g">★</span>${r.firstName} ${r.lastName}${isBoosted?'<span class="boost-tag">2X</span>':''}</td>
-          <td>${fmt(q)}</td><td>${fmt(sp)}</td><td>${fmt(ra)}</td><td>${fmt(tot)}</td>
-        </tr>`;
-      });
-
-      /* Golden: un pilota oro extra, fuori rosa, a punteggio pieno (doppio se il
-         booster raddoppia anche lui). */
-      goldenRiderIds(t).forEach(rid => {
-        const r = DATA.riderById[rid];
-        const e = r?.stats?.events?.[evId];
-        if (!r) return;
-        const factor = riderDoubled(t, rid) ? 2 : 1;
-        const tag = '<span class="boost-tag">EXTRA · GOLDEN</span>';
-        if (!e) {
-          h += `<tr>
-            <td><span class="star-g">★</span>${r.firstName} ${r.lastName}${tag}</td>
-            <td>—</td><td>—</td><td>—</td><td>—</td>
-          </tr>`;
-          return;
-        }
-        const q = (e.q2Points || e.q1Points || 0) * factor;
-        const sp = (e.sprintPoints || 0) * factor;
-        const ra = (e.finalPoints || 0) * factor;
-        const tot = (e.points || 0) * factor;
-        sumQ += q; sumS += sp; sumR += ra; sumT += tot;
-        h += `<tr>
-          <td><span class="star-g">★</span>${r.firstName} ${r.lastName}${tag}</td>
-          <td>${fmt(q)}</td><td>${fmt(sp)}</td><td>${fmt(ra)}</td><td>${fmt(tot)}</td>
-        </tr>`;
-      });
-
-      /* Silver riders (50%) */
-      (t.ridersSilver || []).forEach(rid => {
-        const r = DATA.riderById[rid];
-        const e = r?.stats?.events?.[evId];
-        if (!r) return;
-        if (!e) {
-          h += `<tr class="silver">
-            <td><span class="star-s">☆</span>${r.firstName} ${r.lastName}</td>
-            <td>—</td><td>—</td><td>—</td><td>—</td>
-          </tr>`;
-          return;
-        }
-        const factor = riderDoubled(t, rid) ? 1 : 0.5;
-        const q = (e.q2Points || e.q1Points || 0) * factor;
-        const sp = (e.sprintPoints || 0) * factor;
-        const ra = (e.finalPoints || 0) * factor;
-        const tot = (e.points || 0) * factor;
-        sumQ += q; sumS += sp; sumR += ra; sumT += tot;
-        h += `<tr class="silver">
-          <td><span class="star-s">☆</span>${r.firstName} ${r.lastName}</td>
-          <td>${fmt(q)}</td><td>${fmt(sp)}</td><td>${fmt(ra)}</td><td>${fmt(tot)}</td>
-        </tr>`;
-      });
-
-      /* Constructor */
-      (t.constructors || []).forEach(cid => {
-        const c = DATA.constById[cid];
-        const pts = (c?.stats?.events?.[evId]?.points || 0) * teamFactor;
-        sumT += pts;
-        h += `<tr class="const">
-          <td><span class="ico">🏭</span>${c?.name || 'Costruttore'}</td>
-          <td>—</td><td>—</td><td>—</td><td>${fmt(pts)}</td>
-        </tr>`;
-      });
-
-      /* Squad */
-      (t.squads || []).forEach(sid => {
-        const s = DATA.squadById[sid];
-        const pts = (s?.stats?.events?.[evId]?.points || 0) * teamFactor;
-        sumT += pts;
-        h += `<tr class="squad">
-          <td><span class="ico">🏁</span>${s?.name || 'Team'}</td>
-          <td>—</td><td>—</td><td>—</td><td>${fmt(pts)}</td>
-        </tr>`;
-      });
-
-      /* Totale */
-      h += `<tr class="total">
-        <td>Totale</td>
-        <td>${fmt(sumQ)}</td><td>${fmt(sumS)}</td><td>${fmt(sumR)}</td><td>${fmt(sumT)}</td>
-      </tr>`;
-
-      h += `</tbody></table></div>`;
+      card.append(nodo('div', { class: 'p-body' },
+        nodo('table', { class: 'p-tbl' },
+          nodo('thead', null,
+            nodo('tr', null,
+              nodo('th', null, 'Selezione'),
+              nodo('th', null, 'Q'), nodo('th', null, 'Sprint'), nodo('th', null, 'Gara'), nodo('th', null, 'Tot'))),
+          nodo('tbody', null, righeEvento(t, evId, p)))));
     } else {
-      h += `<div class="empty" style="padding:20px">Squad non disponibile.</div>`;
+      card.append(nodo('div', { class: 'empty', style: 'padding:20px' }, 'Squad non disponibile.'));
     }
 
-    h += `</div>`;
+    carte.push(card);
   });
 
-  return h;
+  return frammento(carte);
 }
-

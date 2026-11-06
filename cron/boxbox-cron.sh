@@ -71,6 +71,14 @@ node compute.mjs >> "$LOG" 2>&1 || log "WARN compute non bloccante"
 
 cp breakdown.json all-teams.json "$DIST/" 2>/dev/null
 
+log "STEP weekend"
+if node fetch-weekend.mjs >> "$LOG" 2>&1; then
+  cp weekend.json "$DIST/" 2>/dev/null
+  log "DONE weekend"
+else
+  log "WARN weekend fetch fallito (non bloccante, resta il file precedente)"
+fi
+
 log "STEP rider-history"
 HIST="rider-history.json"
 if [ -f "$HIST" ] && grep -q "\"season\":$(date +%Y)" "$HIST"; then

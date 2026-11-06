@@ -5,7 +5,9 @@ let ptrActive = false;
 const PTR_THRESHOLD = 80;
 
 document.addEventListener('touchstart', e => {
-  if (window.scrollY === 0 && e.touches.length === 1) {
+  /* Su iOS l'overscroll in cima rende scrollY negativo: con === 0 il gesto
+     si interrompeva a metà. <= 0 copre entrambe le piattaforme. */
+  if (window.scrollY <= 0 && e.touches.length === 1) {
     ptrStartY = e.touches[0].clientY;
     ptrActive = true;
   }
@@ -14,7 +16,7 @@ document.addEventListener('touchstart', e => {
 document.addEventListener('touchmove', e => {
   if (!ptrActive) return;
   const dy = e.touches[0].clientY - ptrStartY;
-  if (dy > 0 && dy < 140 && window.scrollY === 0) {
+  if (dy > 0 && dy < 140 && window.scrollY <= 0) {
     const ptr = document.getElementById('ptr');
     ptr.style.height = Math.min(dy * 0.6, 56) + 'px';
     document.getElementById('ptr-text').textContent = dy > PTR_THRESHOLD ? 'Rilascia' : 'Aggiorna';

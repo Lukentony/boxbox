@@ -47,6 +47,24 @@ export function updateFreshness() {
   const autoOn = !!autoRefreshTimer;
   el.textContent = active
     ? (autoOn ? 'LIVE · auto-refresh 5min' : 'LIVE')
-    : 'Ultimo aggiornamento: ' + new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    : testoFreschezza();
   scheduleAutoRefresh();
+}
+
+/* Ora della FONTE, non del browser: prima l'indicatore scriveva l'ora del
+   refresh locale, che dice quando l'app ha chiesto i dati, non quanto sono
+   freschi. Si prende il timestamp piu' recente fra i dataset caricati. */
+function testoFreschezza() {
+  const cand = [
+    DATA.breakdown?.computedAt,
+    DATA.allTeams?.fetchedAt,
+    DATA.news?.fetchedAt,
+    DATA.newsSignals?.fetchedAt,
+    DATA.otherCategories?.fetchedAt,
+    DATA.riderHistory?.generatedAt,
+    DATA.weekend?.generatedAt,
+  ].filter(Boolean).map(x => new Date(x)).filter(d => !isNaN(d));
+  if (!cand.length) return 'Freschezza dati non disponibile';
+  const src = new Date(Math.max(...cand.map(d => d.getTime())));
+  return 'Dati aggiornati: ' + src.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 }

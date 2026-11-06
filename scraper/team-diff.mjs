@@ -19,10 +19,13 @@ import { readFileSync, writeFileSync, existsSync, renameSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { createHash } from 'crypto';
+import { orderEvents } from '../event-order.js';
 
 const DIR = dirname(fileURLToPath(import.meta.url));
-const STATE_FILE = '/tmp/boxbox-team-diff-state.json';
-const STATE_PENDING = '/tmp/boxbox-team-diff-state.pending.json';
+const STATE_DIR = process.env.BOXBOX_TEAM_DIFF_STATE_DIR || '/tmp';
+const STATE_FILE = resolve(STATE_DIR, 'boxbox-team-diff-state.json');
+const STATE_PENDING = resolve(STATE_DIR, 'boxbox-team-diff-state.pending.json');
+const DATA_DIR = process.env.BOXBOX_TEAM_DIFF_DATA_DIR || DIR;
 
 const RIVALS = (process.env.RIVALS || 'Rivale1,Rivale2,Rivale3').split(',').map(s => s.trim()).filter(Boolean);
 const SLOT = { riders: 'gold', ridersSilver: 'silver' };
@@ -77,44 +80,48 @@ async function main() {
     return;
   }
 
-  const all = readJSON(resolve(DIR, 'all-teams.json'));
+  const all = readJSON(resolve(DATA_DIR, 'all-teams.json'));
   if (!all?.teams) { console.error('all-teams.json assente — salto'); return; }
 
-  const riders = readJSON(resolve(DIR, 'riders.json'));
-  const constructors = readJSON(resolve(DIR, 'constructors.json'));
-  const squads = readJSON(resolve(DIR, 'squads.json'));
-  const events = readJSON(resolve(DIR, 'events.json'));
+  const riders = readJSON(resolve(DATA_DIR, 'riders.json'));
+  const constructors = readJSON(resolve(DATA_DIR, 'constructors.json'));
+  const squads = readJSON(resolve(DATA_DIR, 'squads.json'));
+  const events = readJSON(resolve(DATA_DIR, 'events.json'));
   const rName = nameMap(riders);
   const cName = {}; (constructors || []).forEach(c => { cName[c.id] = c.name; });
   const sName = {}; (squads || []).forEach(s => { sName[s.id] = s.name; });
   const evName = {}; (events || []).forEach(e => { evName[e.id] = (e.displayedName || e.name || '').trim(); });
 
-  const gps = Object.keys(all.teams).map(Number).filter(n => !isNaN(n)).sort((a, b) => a - b);
-  const hasRoster = (gp) => RIVALS.some(p => {
-    const t = all.teams[String(gp)]?.[p];
+  const hasRoster = event => RIVALS.some(p => {
+    const t = all.teams[String(event.id)]?.[p];
     return t && ((t.riders || []).length || (t.ridersSilver || []).length);
   });
-  const curEv = [...gps].reverse().find(hasRoster);
-  const prevEv = gps.filter(g => g < curEv).reverse().find(hasRoster);
-  if (curEv == null || prevEv == null) { console.error('Mancano GP da confrontare — salto'); return; }
-
+  const candidates = orderEvents((events || []).filter(event => Object.hasOwn(all.teams, event.id) && hasRoster(event)));
+  const curEvent = candidates.at(-1);
+  const prevEvent = curEvent && candidates.at(-2);
+  if (!curEvent || !prevEvent) { console.error('Mancano GP da confrontare — salto'); return; }
+  const curEv = curEvent.id, prevEv = prevEvent.id;
   const cur = all.teams[String(curEv)];
   const prev = all.teams[String(prevEv)];
   const lines = [];
   for (const p of RIVALS) {
-    const ct = cur[p] || {}, pt = prev[p] || {};
+    const ct = cur[p], pt = prev[p];
+    if (!ct || !pt) continue;
     const parts = [];
     let changes = 0;
     for (const [field, label] of Object.entries(SLOT)) {
+      if (!Array.isArray(pt[field]) || !Array.isArray(ct[field])) continue;
       const pairs = paired(pt[field], ct[field], rName);
       if (pairs.length) {
         parts.push(`${label}: ${fmtPairs(pairs)}`);
         changes += pairs.length;
       }
     }
-    const cons = paired(pt.constructors, ct.constructors, cName);
+    const cons = Array.isArray(pt.constructors) && Array.isArray(ct.constructors)
+      ? paired(pt.constructors, ct.constructors, cName) : [];
     if (cons.length) { parts.push(`costruttore: ${fmtPairs(cons)}`); changes += cons.length; }
-    const sq = paired(pt.squads, ct.squads, sName);
+    const sq = Array.isArray(pt.squads) && Array.isArray(ct.squads)
+      ? paired(pt.squads, ct.squads, sName) : [];
     if (sq.length) { parts.push(`squadra: ${fmtPairs(sq)}`); changes += sq.length; }
     if (parts.length) {
       const limit = changes > 2 ? ` ⚠️ ${changes} cambi (oltre il limite: booster o penalità)` : ` (${changes}/2 cambi)`;

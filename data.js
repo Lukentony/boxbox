@@ -1,13 +1,20 @@
 import { updateFreshness } from './auto-refresh.js';
+import { nodo } from './dom.js';
 import { checkAndNotify } from './notifications.js';
 import { DATA, currentGp, currentTab, setCurrentGp, setViewMode, viewMode } from './state.js';
 import { renderFantasy } from './tab-fantasy.js';
 import { renderStandings } from './tab-standings.js';
-import { renderAll, setupNav, switchTab } from './ui.js';
+import { renderAll, rendiRottaCorrente, setupNav } from './ui.js';
+
+/* I JSON arrivano da fuori (API MotoGP, Wikipedia, feed RSS, lega Fantasy).
+   Fino al 20/09/2026 i testi venivano neutralizzati qui (escDati) perche' i
+   moduli tab-* li scrivevano in innerHTML; ora le schermate costruiscono nodi
+   DOM e un testo esterno resta testo, quindi non c'e' piu' niente da
+   neutralizzare in ingresso. news.json era gia' fuori da quella passata. */
 
 export async function load() {
   try {
-    const [riders, events, constructors, squads, breakdown, allTeams, news, otherCats, newsSignals, riderHistory] = await Promise.all([
+    const [riders, events, constructors, squads, breakdown, allTeams, news, otherCats, newsSignals, riderHistory, weekend, motore] = await Promise.all([
       fetch('data/riders.json').then(r => r.json()),
       fetch('data/events.json').then(r => r.json()),
       fetch('data/constructors.json').then(r => r.json()),
@@ -18,6 +25,8 @@ export async function load() {
       fetch('data/other-categories.json').then(r => r.json()).catch(() => null),
       fetch('data/news-signals.json').then(r => r.json()).catch(() => null),
       fetch('data/rider-history.json').then(r => r.json()).catch(() => null),
+      fetch('data/weekend.json').then(r => r.json()).catch(() => null),
+      fetch('data/motore.json').then(r => r.json()).catch(() => null),
     ]);
     DATA.riders = riders;
     DATA.events = events.slice().sort((a,b) => (a.order||a.id) - (b.order||b.id));
@@ -29,12 +38,14 @@ export async function load() {
     DATA.otherCategories = otherCats;
     DATA.newsSignals = newsSignals;
     DATA.riderHistory = riderHistory;
-    DATA.riderById = Object.fromEntries(riders.map(r => [r.id, r]));
-    DATA.constById = Object.fromEntries(constructors.map(c => [c.id, c]));
-    DATA.squadById = Object.fromEntries(squads.map(s => [s.id, s]));
+    DATA.weekend = weekend;
+    DATA.motore = motore;
+    DATA.riderById = Object.fromEntries(DATA.riders.map(r => [r.id, r]));
+    DATA.constById = Object.fromEntries(DATA.constructors.map(c => [c.id, c]));
+    DATA.squadById = Object.fromEntries(DATA.squads.map(s => [s.id, s]));
     /* Compute real championship points (sum of finalPoints per rider across all events) */
     DATA.realPts = {};
-    for (const r of riders) {
+    for (const r of DATA.riders) {
       if (!r.stats?.events) continue;
       let sum = 0;
       for (const gpId in r.stats.events) {
@@ -49,7 +60,6 @@ export async function load() {
     }
 
     renderAll();
-    setupNav();
 
     /* ViewMode toggle */
     document.getElementById('mode-toggle').addEventListener('click', e => {
@@ -74,19 +84,21 @@ export async function load() {
     }
     renderFantasy();
 
-    /* Riattiva la tab su cui si era rimasti (il markup statico mostra sempre Home attiva). */
-    switchTab(currentTab, true);
+    /* Avvia il router: renderizza la rotta dell'hash (se l'hash manca, la stanza
+       dell'ultima visita). Il markup statico mostra sempre Home attiva: e' il
+       router a marcare la stanza giusta. */
+    setupNav();
   } catch (err) {
     console.error(err);
-    document.getElementById('s-home').innerHTML =
-      '<div class="empty">Errore di caricamento dati.<br>Verifica i file in /data/.</div>';
+    document.getElementById('s-home').replaceChildren(nodo('div', { class: 'empty' },
+      'Errore di caricamento dati.', nodo('br'), 'Verifica i file in /data/.'));
   }
 }
 
 /* ─ Helpers ─ */
 export async function refreshData() {
   try {
-    const [riders, events, constructors, squads, news, otherCats, newsSignals, riderHistory] = await Promise.all([
+    const [riders, events, constructors, squads, news, otherCats, newsSignals, riderHistory, weekend, motore] = await Promise.all([
       fetch('data/riders.json', { cache: 'no-store' }).then(r => r.json()),
       fetch('data/events.json', { cache: 'no-store' }).then(r => r.json()),
       fetch('data/constructors.json', { cache: 'no-store' }).then(r => r.json()),
@@ -95,18 +107,22 @@ export async function refreshData() {
       fetch('data/other-categories.json', { cache: 'no-store' }).then(r => r.json()).catch(() => null),
       fetch('data/news-signals.json', { cache: 'no-store' }).then(r => r.json()).catch(() => null),
       fetch('data/rider-history.json', { cache: 'no-store' }).then(r => r.json()).catch(() => null),
+      fetch('data/weekend.json', { cache: 'no-store' }).then(r => r.json()).catch(() => null),
+      fetch('data/motore.json', { cache: 'no-store' }).then(r => r.json()).catch(() => null),
     ]);
     DATA.riders = riders;
     DATA.events = events.slice().sort((a,b) => (a.order||a.id) - (b.order||b.id));
     DATA.constructors = constructors;
     DATA.squads = squads;
-    DATA.riderById = Object.fromEntries(riders.map(r => [r.id, r]));
-    DATA.constById = Object.fromEntries(constructors.map(c => [c.id, c]));
-    DATA.squadById = Object.fromEntries(squads.map(s => [s.id, s]));
+    DATA.riderById = Object.fromEntries(DATA.riders.map(r => [r.id, r]));
+    DATA.constById = Object.fromEntries(DATA.constructors.map(c => [c.id, c]));
+    DATA.squadById = Object.fromEntries(DATA.squads.map(s => [s.id, s]));
     if (news) DATA.news = news;
     if (otherCats) DATA.otherCategories = otherCats;
     if (newsSignals) DATA.newsSignals = newsSignals;
     if (riderHistory) DATA.riderHistory = riderHistory;
+    if (weekend) DATA.weekend = weekend;
+    if (motore) DATA.motore = motore;
 
     const oldBd = DATA.breakdown;
     const bd = await fetch('data/breakdown.json', { cache: 'no-store' }).then(r => r.json()).catch(() => null);
@@ -114,8 +130,10 @@ export async function refreshData() {
     const at = await fetch('data/all-teams.json', { cache: 'no-store' }).then(r => r.json()).catch(() => null);
     if (at) DATA.allTeams = at;
 
-    renderAll();
-    if (currentTab === 'fantasy') renderFantasy();
+    /* Refresh sulla rotta corrente: si ridisegna la vista che si sta guardando
+       (sotto-viste e mount Analisi compresi). Le altre stanze si renderizzano
+       quando le apri, quindi non c'e' bisogno di un giro su tutte. */
+    rendiRottaCorrente();
     updateFreshness();
     if (bd) checkAndNotify(oldBd, bd);
   } catch (err) {
