@@ -19,12 +19,13 @@ pubbliche/autenticate di `fantasy.motogp.com`: rispetta i loro Termini di Serviz
 ## Funzionalità
 
 - Calendario MotoGP 2026 con countdown al prossimo GP e stato live durante il weekend
+- Scheda Live: sessioni del weekend, ordine di arrivo e stato di ciascuna sessione
 - Classifica FantasyGP della lega, con breakdown punti per componente (Quali/Sprint/Gara/Bonus)
 - Andamento punti per GP, giocatore per giocatore
 - Prezzi & valore: chi sale/scende di prezzo, miglior rapporto punti/milione
 - Dettaglio pilota: andamento per GP, storico prezzo, forma recente
 - Classifiche Moto2, Moto3, WorldSBK
-- News da Motorsport.com, raggruppate per GP imminente; segnale di sentiment per pilota via LLM
+- News da Motorsport.com in una scheda dedicata, con segnale di sentiment per pilota via LLM
   (NVIDIA NIM) quando disponibile — degradazione soft se la chiave API non è configurata
 - Notifica su Discord quando un rivale della lega cambia roster prima del lock squadra
 - Notifiche in-app (Notification API) durante i weekend di gara
@@ -77,7 +78,7 @@ sintetiche; include booster, calendario, rendering e contratto delle classificaz
 Il vecchio `test-weekend-pipeline.mjs` è anche un controllo di dati locali generati, non un gate
 ermetico per un clone vuoto: i suoi controlli su copie delle regole non sostituiscono questi test.
 
-Il controllo browser opzionale è `node scraper/test-browser-security.mjs`, con Playwright e un
+Il controllo browser opzionale è `node scraper/test-browser.mjs`, con Playwright e un
 Chromium già installati; `BOXBOX_CHROMIUM` può indicare l'eseguibile locale. Non installa nulla,
 serve solo una lista esplicita di file su loopback, blocca richieste esterne e salva screenshot
 con dati sintetici in `docs/verifiche/`. Non avvia finestre interattive.
@@ -92,17 +93,20 @@ index.html                  Shell HTML statica + <script type="module" src="main
 styles.css                  Design system (un solo file, nessun preprocessore)
 main.js                     Entry point: registra il service worker, avvia il caricamento dati
 state.js                    Stato condiviso (DATA + tab/GP selezionati)
+dom.js                      Costruzione dei nodi DOM: i testi esterni restano testo, non markup
 data.js                     load() / refreshData() — fetch e popolamento di DATA
-format.js, selectors.js,    Helper puri: formattazione, derivazioni sui dati, metriche
-  analysis.js, countdown.js   prezzo/valore/forma, countdown
+format.js, selectors.js,    Helper puri: formattazione e policy URL, derivazioni sui dati,
+  analysis.js, countdown.js   metriche prezzo/valore/forma, countdown
 event-order.js              Ordine cronologico condiviso (order, fallback data; mai ID)
 boosters.js                 Regola booster Fantasy (rider 2X, golden, super 2X):
                              la usano tab-fantasy.js e scraper/compute.mjs
 ui.js                       Navigazione tra tab, orchestrazione del render
-tab-home.js                 Tab Home (countdown, top3, news)
-tab-standings.js            Tab Campionato (piloti/costruttori/team/calendario)
+tab-home.js                 Tab Home (countdown, top3, anteprima news)
+tab-live.js                 Tab Live (sessioni del weekend, risultati)
+tab-standings.js            Tab Campionato (piloti/costruttori/team/calendario/altre serie)
 tab-fantasy.js              Tab Fantasy (classifica stagione, dettaglio GP)
-tab-other.js                Tab Altre (Moto2/Moto3/WSBK, impostazioni)
+tab-news.js                 Tab Notizie
+tab-other.js                Pannello Impostazioni (preferenze, link utili)
 pull-to-refresh.js,         Pull-to-refresh, notifiche in-app, auto-refresh nei weekend
   notifications.js,
   auto-refresh.js
@@ -117,12 +121,16 @@ scraper/
 ├── fetch-news.mjs          RSS Motorsport.com, raggruppamento per GP imminente
 ├── fetch-other-categories.mjs  Classifiche Moto2/Moto3/WSBK da Wikipedia
 ├── fetch-rider-history.mjs Storico piloti per circuito/meteo da API MotoGP, 1x/stagione
+├── fetch-weekend.mjs       Sessioni e risultati del weekend da API MotoGP pubblica
 ├── analyze-news.mjs        Classificazione sentiment news per pilota via LLM (opzionale)
 ├── compute.mjs             Calcolo breakdown punti (Quali/Sprint/Gara/Bonus)
 ├── team-diff.mjs           Diff roster rivali tra GP, anti-spam a due fasi
 ├── refresh-session.mjs     Verifica validità sessione/cookie
 ├── renew-dat.mjs           Rinnovo automatico cookie via Playwright/CDP
 ├── test-boosters.mjs       Test della regola booster condivisa (modulo + compute.mjs)
+├── test-event-order.mjs    Test dell'ordine cronologico e del watcher rivali
+├── test-news-classification.mjs  Test del contratto di classificazione news
+├── test-browser.mjs        Controllo browser opzionale (Playwright)
 ├── test-weekend-pipeline.mjs  Test suite dry-run della pipeline
 └── .env.example            Template configurazione
 

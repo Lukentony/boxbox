@@ -1,164 +1,198 @@
 import { startCountdown, stopCountdown } from './countdown.js';
-import { escapeHtml, safeHttpUrl, flagOf, fmtDate, timeAgo } from './format.js';
-import { activeEvent, activePlayers, lastCompletedEvent, nextScheduledEvent } from './selectors.js';
+import { frammento, nodo, nodoSvg } from './dom.js';
+import { flagOf, fmtDate, fmtOra } from './format.js';
+import { activeEvent, activePlayers, avvioGp, nextScheduledEvent } from './selectors.js';
 import { DATA } from './state.js';
-import { animateChildren, switchTab } from './ui.js';
+import { newsCard } from './tab-news.js';
+import { PERCORSI, animateChildren, vaiA } from './ui.js';
 
+/* ─── Blocchi riusati da Home e Live ─── */
+
+/* "Adesso": GP attivo o prossimo, con countdown (id dedicato per non
+   sovrapporre Home e Live: entrambe le sezioni restano nel DOM).
+   Esportata: la usa anche la stanza Live quando il weekend non e' in corso. */
+/* Riga sotto il countdown: dice a cosa si riferisce e quando, in chiaro.
+   L'avvio lo decide avvioGp(): prima sessione del prossimo weekend se il server
+   l'ha gia' scaricata, altrimenti prima gara del calendario fantasy. */
+function avvioHtml(e) {
+  const a = avvioGp(e);
+  if (!a.iso) return null;
+  const etichetta = a.etichetta ? `${a.etichetta} · ` : '';
+  const conOra = String(a.iso).includes('T') ? ` ${fmtOra(a.iso)}` : '';
+  return nodo('div', { class: 'cd-nota' }, `al via · ${etichetta}${fmtDate(a.iso)}${conOra}`);
+}
+
+export function heroNodo(hero, cdId) {
+  const liveTag = hero.status === 'active' ? nodo('span', { class: 'tag tag--live' }, 'LIVE') : null;
+  const sotto = hero.status !== 'active'
+    ? frammento(nodo('div', { class: 'cd', id: cdId }), avvioHtml(hero))
+    : nodo('div', { class: 'cd' },
+      nodo('div', { class: 'cd-u cd-u--stato' },
+        nodo('div', { class: 'cd-n cd-n--stato' }, 'IN CORSO'),
+        nodo('div', { class: 'cd-l' }, `${fmtDate(hero.dateStart)} – ${fmtDate(hero.dateEnd)}`)));
+  return nodo('div', { class: 'hero' },
+    nodo('div', { class: 'hero-r' },
+      nodo('span', { class: 'hero-round' }, `Round ${hero.order || hero.id}`),
+      nodo('span', { class: 'hero-flag' }, flagOf(hero)),
+      liveTag),
+    nodo('div', { class: 'hero-name' }, hero.displayedName.trim()),
+    nodo('div', { class: 'hero-circuit' }, hero.circuit),
+    sotto);
+}
+
+/* Scorciatoie: stesse destinazioni della barra in basso, ma in evidenza in Home.
+   Icone SVG identiche a quelle della barra (niente emoji), proporzioni in CSS. */
+function scorciatoieNodo() {
+  const ico = {
+    live: [['path', { d: 'M3 12h4l3-8 4 16 3-8h4' }]],
+    classifiche: [
+      ['path', { d: 'M6 4h12v4a6 6 0 0 1-12 0z' }],
+      ['path', { d: 'M4 4h2v2a2 2 0 0 1-2 2zM20 4h-2v2a2 2 0 0 0 2 2z' }],
+      ['path', { d: 'M9 14h6l-1 6h-4z' }],
+    ],
+    fantasy: [['path', { d: 'M13 2L4 14h7l-1 8 9-12h-7z' }]],
+    notizie: [
+      ['rect', { x: '3', y: '4', width: '18', height: '16', rx: '2' }],
+      ['path', { d: 'M7 8h10M7 12h10M7 16h6' }],
+    ],
+  };
+  const voci = [
+    { rotta: PERCORSI.live, ico: 'live', name: 'Live', desc: 'Weekend e sessioni' },
+    { rotta: PERCORSI.classifiche, ico: 'classifiche', name: 'Classifiche', desc: 'Piloti, team, serie' },
+    { rotta: PERCORSI.fantasy, ico: 'fantasy', name: 'Fantasy', desc: 'Lega, rose, prezzi' },
+    { rotta: PERCORSI.notizie, ico: 'notizie', name: 'Notizie', desc: 'Feed completo' },
+  ];
+  return nodo('div', { class: 'scorciatoie' },
+    voci.map(v => nodo('button', { type: 'button', class: 'scorciatoia', 'data-vai': v.rotta },
+      nodo('span', { class: 'scorciatoia-ico' },
+        nodoSvg('svg', {
+          viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
+          'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+        }, ico[v.ico].map(([tag, attributi]) => nodoSvg(tag, attributi)))),
+      nodo('span', { class: 'scorciatoia-nome' }, v.name),
+      nodo('span', { class: 'scorciatoia-desc' }, v.desc))));
+}
+
+/* Top 3 del campionato: anteprima, mai la classifica completa. Ogni riga porta
+   al permalink del pilota (#/pilota/:id). */
+function top3Nodo(top3) {
+  const righe = top3.map((r, i) => {
+    const team = DATA.constById[r.constructorId]?.name || '';
+    const plateCls = i === 0 ? 'plate plate--gold' : i === 1 ? 'plate plate--silver' : 'plate plate--bronze';
+    const ferito = r.status === 'injured' ? nodo('span', { class: 'injured' }, '●') : null;
+    return nodo('div', { class: 'row' + (i === 0 ? ' is-leader' : ''), 'data-rid': r.id, style: 'cursor:pointer' },
+      nodo('div', { class: plateCls }, nodo('span', null, r.number || r.id)),
+      nodo('div', { class: 'row-m' },
+        nodo('div', { class: 'row-name' }, r.firstName + ' ' + r.lastName + (ferito ? ' ' : ''), ferito),
+        nodo('div', { class: 'row-sub' }, team)),
+      nodo('div', { class: 'row-pts' }, DATA.realPts?.[r.id] ?? 0));
+  });
+  return nodo('div', { class: 'card' },
+    nodo('div', { class: 'card-h' },
+      nodo('span', { class: 'card-t' }, 'Top 3 Stagione'),
+      nodo('span', { class: 'card-meta' }, 'tocca per il dettaglio')),
+    righe);
+}
+
+function leaderCallNodo(leader, secondPts) {
+  if (!leader) return null;
+  return nodo('div', { class: 'leader-call', 'data-go': 'fantasy' },
+    nodo('div', { class: 'leader-call-h' },
+      nodo('div', { class: 'card-t' }, '⚡ Fantasy · Leader'),
+      nodo('span', { class: 'leader-call-arrow' }, '→')),
+    nodo('div', { class: 'leader-call-name' }, '@' + leader.displayName),
+    nodo('div', { style: 'display:flex;align-items:baseline;gap:6px' },
+      nodo('span', { class: 'leader-call-num' }, leader.overallPoints),
+      nodo('span', { style: 'font-family:var(--f-mono);font-size:11px;color:var(--text-faint);letter-spacing:.12em' }, 'PT')),
+    nodo('div', { class: 'leader-call-meta' },
+      nodo('span', null, '+' + (leader.overallPoints - secondPts).toFixed(1) + ' dal 2°'),
+      nodo('span', null, 'Valore team €' + (leader.teamValue / 1e6).toFixed(1) + 'M')));
+}
+
+/* Al massimo tre notizie: il feed completo sta nella stanza Notizie. */
+function newsMiniNodo() {
+  const items = DATA.news?.items || [];
+  if (!items.length) return null;
+  return frammento(
+    nodo('div', { class: 'news-h' },
+      nodo('span', { class: 'news-h-t' }, 'Ultime notizie'),
+      nodo('span', { class: 'news-h-src' }, DATA.news.source || 'motorsport.com')),
+    items.slice(0, 3).map(n => newsCard(n)),
+    nodo('button', { type: 'button', class: 'news-more', id: 'news-tutte' }, 'Tutte le notizie →'));
+}
+
+/* ═════════════════════════════════════════════════════════
+   HOME — cruscotto: "Adesso", scorciatoie, anteprime. Nessuna lista completa.
+   ═════════════════════════════════════════════════════════ */
 export function renderHome() {
   const root = document.getElementById('s-home');
   const active = activeEvent();
   const next = active ? null : nextScheduledEvent();
-  const last = lastCompletedEvent();
+  const hero = active || next;
   const top3 = DATA.riders.filter(r => r.status !== 'disqualified').sort((a,b) => (DATA.realPts?.[b.id] ?? 0) - (DATA.realPts?.[a.id] ?? 0)).slice(0, 3);
   const leader = activePlayers()[0];
   const secondPts = activePlayers()[1]?.overallPoints ?? 0;
 
-  let h = '';
-  let extraNewsHtml = '';
-
-  /* Hero: prossimo GP (o attivo) */
-  const hero = active || next;
+  const contenuto = [];
+  contenuto.push(nodo('div', { class: 'f-subtitle' }, nodo('span', null, 'Adesso')));
   if (hero) {
-    const liveTag = hero.status === 'active' ? '<span class="tag tag--live">LIVE</span>' : '';
-    h += `
-      <div class="hero">
-        <div class="hero-r">
-          <span class="hero-round">Round ${escapeHtml(hero.order || hero.id)}</span>
-          <span class="hero-flag">${flagOf(hero)}</span>
-          ${liveTag}
-        </div>
-        <div class="hero-name">${escapeHtml(hero.displayedName.trim())}</div>
-        <div class="hero-circuit">${escapeHtml(hero.circuit)}</div>
-        ${hero.status !== 'active' ? `<div class="cd" id="cd"></div>` :
-          `<div class="cd"><div class="cd-u"><div class="cd-n" style="color:var(--accent);background:none;-webkit-text-fill-color:var(--accent)">IN CORSO</div><div class="cd-l">${fmtDate(hero.dateStart)} – ${fmtDate(hero.dateEnd)}</div></div></div>`}
-      </div>
-    `;
-    if (hero.status !== 'active') setTimeout(() => startCountdown(hero.dateStart), 50);
-    else stopCountdown();
-  }
-
-  /* Top 3 piloti — affiancati */
-  h += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">`;
-  /* Top 3 Stagione */
-  h += `<div class="card" style="margin-bottom:0"><div class="card-h"><span class="card-t">Top 3 Stagione</span></div>`;
-  top3.forEach((r, i) => {
-    const team = DATA.constById[r.constructorId]?.name || '';
-    const plateCls = i === 0 ? 'plate plate--gold' : i === 1 ? 'plate plate--silver' : 'plate plate--bronze';
-    const injured = r.status === 'injured' ? ' <span class="injured">●</span>' : '';
-    h += `
-      <div class="row ${i === 0 ? 'is-leader' : ''}">
-        <div class="${plateCls}"><span>${escapeHtml(r.number || r.id)}</span></div>
-        <div class="row-m">
-          <div class="row-name">${escapeHtml(r.firstName)} ${escapeHtml(r.lastName)}${injured}</div>
-          <div class="row-sub">${escapeHtml(team)}</div>
-        </div>
-        <div class="row-pts">${escapeHtml(DATA.realPts?.[r.id] ?? 0)}</div>
-      </div>
-    `;
-  });
-  h += `</div>`;
-  /* Top 3 Ultimo GP */
-  if (last) {
-    const lastResults = DATA.riders
-      .filter(r => r.stats?.events?.[last.id])
-      .map(r => ({ r, e: r.stats.events[last.id] }))
-      .sort((a,b) => (b.e.finalPoints || 0) - (a.e.finalPoints || 0))
-      .slice(0, 3);
-    h += `<div class="card" style="margin-bottom:0"><div class="card-h">
-      <span class="card-t">${flagOf(last)} · Gara</span>
-      <span class="card-meta">${escapeHtml(last.displayedName.trim())}</span>
-    </div>`;
-    lastResults.forEach((x, i) => {
-      const plateCls = i === 0 ? 'plate plate--gold' : i === 1 ? 'plate plate--silver' : 'plate plate--bronze';
-      h += `
-        <div class="row">
-          <div class="${plateCls}"><span>${escapeHtml(x.r.number || x.r.id)}</span></div>
-          <div class="row-m">
-            <div class="row-name">${escapeHtml(x.r.firstName)} ${escapeHtml(x.r.lastName)}</div>
-            <div class="row-sub">${escapeHtml(DATA.constById[x.r.constructorId]?.name || '')}</div>
-          </div>
-          <div class="row-pts">${escapeHtml(x.e.finalPoints || 0)}<div class="pts-sub">pt gara</div></div>
-        </div>
-      `;
-    });
-    h += `</div>`;
+    contenuto.push(heroNodo(hero, 'cd'));
+    if (hero.status !== 'active') {
+      const inizio = avvioGp(hero).iso;
+      if (inizio) setTimeout(() => startCountdown(inizio, 'cd'), 50);
+    } else stopCountdown('cd');
   } else {
-    h += `<div class="card" style="margin-bottom:0"><div class="card-h"><span class="card-t">Ultimo GP</span></div><div class="empty" style="padding:16px">Nessun GP completato.</div></div>`;
-  }
-  h += `</div>`; /* fine grid */
-
-  /* Leader Fantasy */
-  if (leader) {
-    h += `
-      <div class="leader-call" data-go="fantasy">
-        <div class="leader-call-h">
-          <div class="card-t">⚡ Fantasy · Leader</div>
-          <span class="leader-call-arrow">→</span>
-        </div>
-        <div class="leader-call-name">@${escapeHtml(leader.displayName)}</div>
-        <div style="display:flex;align-items:baseline;gap:6px">
-          <span class="leader-call-num">${escapeHtml(leader.overallPoints)}</span>
-          <span style="font-family:var(--f-mono);font-size:11px;color:var(--text-faint);letter-spacing:.12em">PT</span>
-        </div>
-        <div class="leader-call-meta">
-          <span>+${(leader.overallPoints - secondPts).toFixed(1)} dal 2°</span>
-          <span>Valore team €${(leader.teamValue/1e6).toFixed(1)}M</span>
-        </div>
-      </div>
-    `;
+    contenuto.push(nodo('div', { class: 'card' },
+      nodo('div', { class: 'empty', style: 'padding:16px' }, 'Nessun GP in calendario.')));
   }
 
-  /* News — raggruppate per GP imminente, recuperato 2026-08-08 (Claude), stessa causa/nota
-     di renderUpcomingEventView sopra: il backend (fetch-news.mjs) produceva upcomingGP/gpRelated
-     senza che nessuna UI li leggesse. Codice del 7/06 (commit 12ad823), invariato. */
-  if (DATA.news?.items?.length) {
-    const upGP = DATA.news.upcomingGP;
-    const gpNews = upGP ? DATA.news.items.filter(n => n.gpRelated) : [];
-    const restNews = upGP ? DATA.news.items.filter(n => !n.gpRelated) : DATA.news.items;
-    const mkCard = n => {
-      const ago = timeAgo(n.pubDate);
-      const cats = (n.categories || []).filter(c => c !== 'MotoGP').slice(0,1).join('');
-      const link = safeHttpUrl(n.link, '#');
-      const image = safeHttpUrl(n.image);
-      return `<a class="news-card${n.gpRelated ? ' news-card--gp' : ''}" href="${escapeHtml(link)}" target="_blank" rel="noopener">
-        ${image ? `<img class="news-img" src="${escapeHtml(image)}" alt="" loading="lazy">` : ''}
-        <div class="news-body">
-          <div class="news-title">${escapeHtml(n.title)}</div>
-          <div class="news-meta">${escapeHtml(ago)}${cats ? ' · ' + escapeHtml(cats) : ''}</div>
-        </div>
-      </a>`;
-    };
-    if (gpNews.length) {
-      h += `<div class="news-h"><span class="news-h-t">🏁 ${escapeHtml(upGP.name)}</span><span class="news-h-src">${Number(upGP.hoursUntil)}h al via</span></div>`;
-      gpNews.forEach(n => { h += mkCard(n); });
-    }
-    const shownRest = restNews.slice(0, gpNews.length ? 4 : 6);
-    const moreRest = restNews.slice(gpNews.length ? 4 : 6);
-    extraNewsHtml = moreRest.map(mkCard).join('');
-    h += `<div class="news-h"><span class="news-h-t">Ultime notizie</span><span class="news-h-src">${escapeHtml(DATA.news.source || 'motorsport.com')}</span></div>`;
-    shownRest.forEach(n => { h += mkCard(n); });
-    if (moreRest.length) {
-      h += `<div class="news-more" id="news-more">Altre ${moreRest.length} notizie ▾</div>`;
-    }
-  }
+  contenuto.push(nodo('div', { class: 'f-subtitle', style: 'margin-top:12px' }, nodo('span', null, 'Scorciatoie')));
+  contenuto.push(scorciatoieNodo());
 
-  h += `<div class="fade-pad"></div>`;
-  root.innerHTML = h;
+  contenuto.push(top3Nodo(top3));
+  contenuto.push(leaderCallNodo(leader, secondPts));
+  contenuto.push(newsMiniNodo());
+  contenuto.push(nodo('div', { class: 'fade-pad' }));
+
+  root.replaceChildren(frammento(contenuto));
   animateChildren(root);
 
-  /* deep link */
-  root.querySelector('.leader-call')?.addEventListener('click', () => switchTab('fantasy'));
-
-  /* expand news */
-  const moreBtn = root.querySelector('#news-more');
-  if (moreBtn && DATA.news?.items) {
-    moreBtn.addEventListener('click', () => {
-      moreBtn.insertAdjacentHTML('beforebegin', extraNewsHtml);
-      moreBtn.remove();
-    });
-  }
+  root.querySelectorAll('[data-vai]').forEach(el => {
+    el.addEventListener('click', () => vaiA(el.dataset.vai));
+  });
+  root.querySelectorAll('[data-rid]').forEach(el => {
+    el.addEventListener('click', () => vaiA(PERCORSI.pilota(el.dataset.rid)));
+  });
+  root.querySelector('.leader-call')?.addEventListener('click', () => vaiA(PERCORSI.fantasy));
+  root.querySelector('#news-tutte')?.addEventListener('click', () => vaiA(PERCORSI.notizie));
 }
 
 /* ═════════════════════════════════════════════════════════
-   CAMPIONATO (PILOTI / COSTRUTTORI / TEAM)
+   LIVE — stanza provvisoria (Tappa 2): riusa i blocchi gia' esistenti.
+   La normalizzazione del feed e la vista definitiva arrivano nella Tappa 3.
    ═════════════════════════════════════════════════════════ */
+export function renderLive() {
+  const root = document.getElementById('s-live');
+  const active = activeEvent();
+  const next = active ? null : nextScheduledEvent();
+  const hero = active || next;
+  const last = lastCompletedEvent();
+
+  const contenuto = [];
+  contenuto.push(nodo('div', { class: 'f-subtitle' }, nodo('span', null, 'Adesso')));
+  if (hero) {
+    contenuto.push(heroNodo(hero, 'cd-live'));
+    if (hero.status !== 'active') setTimeout(() => startCountdown(hero.dateStart, 'cd-live'), 50);
+    else stopCountdown('cd-live');
+  } else {
+    contenuto.push(nodo('div', { class: 'card' },
+      nodo('div', { class: 'empty', style: 'padding:16px' }, 'Nessun GP in corso o in arrivo.')));
+  }
+
+  contenuto.push(weekendCardHtml());
+  contenuto.push(ultimoGpHtml(last));
+  contenuto.push(nodo('div', { class: 'fade-pad' }));
+
+  root.replaceChildren(frammento(contenuto));
+  animateChildren(root);
+}

@@ -1,41 +1,14 @@
 import { scheduleAutoRefresh } from './auto-refresh.js';
-import { escapeHtml } from './format.js';
-import { DATA } from './state.js';
+import { frammento, nodo } from './dom.js';
 import { animateChildren, setTopbar } from './ui.js';
 
-let currentOtherView = null; /* null = menu, oppure 'moto2','moto3','motoe','wsbk' */
+/* ═════════════════════════════════════════════════════════
+   IMPOSTAZIONI (icona in topbar) — ex sezione del menu "Altre"
 
-/* Usata da switchTab() quando si arriva sulla tab "Altre" dal basso: senza questo
-   reset, tornare da un'altra tab riproponeva la sotto-vista dove si era rimasti
-   invece del menu principale. */
-export function resetOtherView() { currentOtherView = null; }
-
-export function tornaAlMenuAltre() { currentOtherView = null; renderOther(); }
-
-/* Usata sia dal click sulla card categoria sia dal ripristino di history.js
-   (tasto/gesto "indietro"): stesso identico effetto, un solo posto che decide
-   come si apre una sotto-vista. */
-export function mostraSottovistaAltre(id) { currentOtherView = id; renderOther(); }
-
-export function renderOther() {
-  const root = document.getElementById('s-other');
-
-  /* Se siamo dentro una vista categoria */
-  if (currentOtherView) {
-    renderOtherCategory(currentOtherView);
-    return;
-  }
-
-  /* Il ramo menu si auto-ripristina sempre la topbar: prima, tornando qui dal
-     pulsante "indietro" di una sotto-vista, il titolo restava bloccato su
-     quello della sotto-vista (solo renderOtherCategory la impostava, mai il menu). */
-  setTopbar('Motorsport', 'Altre categorie', '');
-
-  const categories = [
-    { id: 'moto2', name: 'Moto2', icon: '🏍️', desc: 'Campionato 2026' },
-    { id: 'moto3', name: 'Moto3', icon: '🏍️', desc: 'Campionato 2026' },
-    { id: 'wsbk', name: 'WorldSBK', icon: '🌍', desc: 'Superbike 2026' },
-  ];
+   IMPOSTAZIONI (icona in topbar) — ex sezione del menu "Altre"
+   ═════════════════════════════════════════════════════════ */
+export function renderSettings() {
+  const root = document.getElementById('s-settings');
 
   const links = [
     { icon: '📊', name: 'Classifica MotoGP Live', url: 'https://www.motogp.com/en/world-standing/2026/motogp/championship-standings' },
@@ -43,44 +16,10 @@ export function renderOther() {
     { icon: '📰', name: 'News Motorsport.com', url: 'https://www.motorsport.com/motogp/news/' },
     { icon: '⚡', name: 'Fantasy MotoGP', url: 'https://fantasy.motogp.com/' },
     { icon: '🏠', name: 'Box Box (GitHub)', url: 'https://github.com/Lukentony/boxbox' },
-    { icon: '🌐', name: 'Sito di Luca', url: 'https://lukentony.it' },
+    { icon: '🌐', name: 'lukentony.it', url: 'https://lukentony.it' },
   ];
 
-  let h = '';
-
-  h += `<div class="f-subtitle"><span>Classifiche altre categorie</span></div>`;
-  h += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">`;
-  categories.forEach(cat => {
-    h += `<div class="news-card" data-cat="${cat.id}" style="cursor:pointer;padding:16px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px">
-      <div style="font-size:28px">${cat.icon}</div>
-      <div class="news-title" style="font-size:15px">${cat.name}</div>
-      <div class="news-meta">${cat.desc}</div>
-    </div>`;
-  });
-  h += `</div>`;
-
-  h += `<div class="f-subtitle" style="margin-top:20px"><span>Link utili</span></div>`;
-  links.forEach(lnk => {
-    h += `<a href="${lnk.url}" target="_blank" rel="noopener" class="news-card" style="margin-bottom:6px;padding:10px 14px">
-      <div style="font-size:18px;flex-shrink:0">${lnk.icon}</div>
-      <div class="news-body" style="gap:0">
-        <div class="news-title" style="font-size:13px">${lnk.name}</div>
-      </div>
-      <div style="font-size:14px;color:var(--text-faint)">→</div>
-    </a>`;
-  });
-
-  /* Sezione impostazioni */
   const autoRefOn = localStorage.getItem('bbAutoRefresh') !== 'false';
-  h += `<div class="f-subtitle" style="margin-top:20px"><span>Impostazioni</span></div>`;
-  h += `<div class="card sett-card">`;
-  h += `<div class="sett-row" data-sett="autoRefresh">
-    <div class="sett-label">
-      <div class="sett-name">Auto-aggiornamento dati</div>
-      <div class="sett-desc">Ricarica i dati ogni 5 minuti durante i weekend GP</div>
-    </div>
-    <div class="sett-toggle ${autoRefOn ? 'is-on' : ''}"><div class="sett-thumb"></div></div>
-  </div>`;
   const notifSupported = 'Notification' in window;
   const notifPerm = notifSupported ? Notification.permission : 'unsupported';
   const notifOn = notifPerm === 'granted' && localStorage.getItem('bbNotifications') === 'true';
@@ -90,29 +29,43 @@ export function renderOther() {
     ? 'Non supportate da questo browser'
     : 'Avviso quando i punti vengono aggiornati durante il GP';
   const notifDisabled = notifPerm === 'denied' || notifPerm === 'unsupported';
-  h += `<div class="sett-row${notifDisabled ? ' sett-row--disabled' : ''}" data-sett="notifications">
-    <div class="sett-label">
-      <div class="sett-name">Notifiche aggiornamenti</div>
-      <div class="sett-desc">${notifDesc}</div>
-    </div>
-    <div class="sett-toggle ${notifOn ? 'is-on' : ''}"><div class="sett-thumb"></div></div>
-  </div>`;
-  h += `</div>`;
 
-  h += `<div class="fade-pad"></div>`;
-  root.innerHTML = h;
-  animateChildren(root);
+  const interruttore = (attivo) => nodo('div', { class: 'sett-toggle' + (attivo ? ' is-on' : '') },
+    nodo('div', { class: 'sett-thumb' }));
+  const riga = (chiave, nome, descrizione, attivo, disabilitata) => nodo('div', {
+    class: 'sett-row' + (disabilitata ? ' sett-row--disabled' : ''),
+    'data-sett': chiave,
+  },
+    nodo('div', { class: 'sett-label' },
+      nodo('div', { class: 'sett-name' }, nome),
+      nodo('div', { class: 'sett-desc' }, descrizione)),
+    interruttore(attivo));
 
-  /* Click handler per categorie */
-  root.querySelectorAll('[data-cat]').forEach(el => {
-    el.addEventListener('click', () => {
-      const id = el.dataset.cat;
-      mostraSottovistaAltre(id);
-      history.pushState({ tab: 'other', otherView: id }, '');
-    });
+  const contenuto = [];
+  contenuto.push(nodo('div', { class: 'f-subtitle' }, nodo('span', null, 'Impostazioni')));
+  contenuto.push(nodo('div', { class: 'card sett-card' },
+    riga('autoRefresh', 'Auto-aggiornamento dati', 'Ricarica i dati ogni 5 minuti durante i weekend GP', autoRefOn, false),
+    riga('notifications', 'Notifiche aggiornamenti', notifDesc, notifOn, notifDisabled)));
+
+  contenuto.push(nodo('div', { class: 'f-subtitle', style: 'margin-top:20px' }, nodo('span', null, 'Link utili')));
+  links.forEach(lnk => {
+    contenuto.push(nodo('a', {
+      href: lnk.url,
+      target: '_blank',
+      rel: 'noopener',
+      class: 'news-card',
+      style: 'margin-bottom:6px;padding:10px 14px',
+    },
+      nodo('div', { style: 'font-size:18px;flex-shrink:0' }, lnk.icon),
+      nodo('div', { class: 'news-body', style: 'gap:0' },
+        nodo('div', { class: 'news-title', style: 'font-size:13px' }, lnk.name)),
+      nodo('div', { style: 'font-size:14px;color:var(--text-faint)' }, '→')));
   });
 
-  /* Click handler per settings */
+  contenuto.push(nodo('div', { class: 'fade-pad' }));
+  root.replaceChildren(frammento(contenuto));
+  animateChildren(root);
+
   root.querySelectorAll('.sett-row').forEach(row => {
     row.addEventListener('click', () => {
       const key = row.dataset.sett;
@@ -120,7 +73,7 @@ export function renderOther() {
         const current = localStorage.getItem('bbAutoRefresh') !== 'false';
         localStorage.setItem('bbAutoRefresh', current ? 'false' : 'true');
         scheduleAutoRefresh();
-        renderOther();
+        renderSettings();
       } else if (key === 'notifications') {
         if (!('Notification' in window)) return;
         if (Notification.permission === 'denied') return;
@@ -129,74 +82,14 @@ export function renderOther() {
             if (Notification.permission === 'granted') {
               localStorage.setItem('bbNotifications', 'true');
             }
-            renderOther();
+            renderSettings();
           });
         } else {
           const cur = localStorage.getItem('bbNotifications') === 'true';
           localStorage.setItem('bbNotifications', cur ? 'false' : 'true');
-          renderOther();
+          renderSettings();
         }
       }
     });
-  });
-}
-
-export function renderOtherCategory(catId) {
-  const root = document.getElementById('s-other');
-  const names = { moto2:'Moto2', moto3:'Moto3', wsbk:'WorldSBK' };
-  const catName = names[catId] || catId;
-
-  /* Aggiorna topbar */
-  setTopbar(`${catName} 2026`, catName, '');
-
-  let h = '';
-  /* Back button */
-  h += `<div class="seg" style="margin-bottom:12px">
-    <button class="seg-btn is-active" id="back-other" style="margin-right:0">← Classifiche</button>
-  </div>`;
-
-  /* Ottieni dati categoria */
-  const catData = DATA.otherCategories?.categories?.[catId];
-  const riders = catData?.riders || [];
-  const fetchedAt = DATA.otherCategories?.fetchedAt || null;
-
-  if (riders.length > 0) {
-    h += `<div class="card" style="padding:0;overflow:hidden">
-      <table class="f-tbl">
-        <thead><tr>
-          <th>Pos</th><th>Pilota</th><th>Moto</th><th>Team</th><th>Pts</th>
-        </tr></thead>
-        <tbody>`;
-    riders.forEach((r, i) => {
-      const medal = r.pos === 1 ? '🥇' : r.pos === 2 ? '🥈' : r.pos === 3 ? '🥉' : '';
-      h += `<tr class="${i===0?'is-leader':''}">
-        <td class="user"><span class="pos">${escapeHtml(r.pos)}</span>${medal}</td>
-        <td>${escapeHtml(r.rider)}</td>
-        <td style="color:var(--text-dim);font-size:12px">${escapeHtml(r.bike)}</td>
-        <td style="color:var(--text-faint);font-size:11px">${escapeHtml(r.team)}</td>
-        <td class="tot">${escapeHtml(r.totalPoints)}</td>
-      </tr>`;
-    });
-    h += `</tbody></table></div>`;
-    if (fetchedAt) {
-      const d = new Date(fetchedAt);
-      h += `<div style="font-size:10px;color:var(--text-faint);margin-top:6px;text-align:center">Fonte: Wikipedia · aggiornato ${d.toLocaleDateString('it-IT')} ${d.toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit'})}</div>`;
-    }
-  } else {
-    h += `<div class="card"><div class="card-h"><span class="card-t">Classifica ${escapeHtml(catName)}</span></div>`;
-    h += `<div class="empty" style="padding:24px">
-      <div style="font-size:24px;margin-bottom:8px">🔌</div>
-      <div>Dati ${escapeHtml(catName)} non disponibili.</div>
-      <div style="font-size:12px;color:var(--text-faint);margin-top:6px">I dati vengono da Wikipedia. Se il campionato 2026 non è ancora iniziato, la pagina potrebbe non esistere.</div>
-    </div>`;
-    h += `</div>`;
-  }
-
-  h += `<div class="fade-pad"></div>`;
-  root.innerHTML = h;
-  animateChildren(root);
-
-  document.getElementById('back-other').addEventListener('click', () => {
-    history.back();
   });
 }

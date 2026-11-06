@@ -1,11 +1,11 @@
-const CACHE_NAME = 'boxbox-public-v20';
+const CACHE_NAME = 'boxbox-public-v21';
 const SHELL = [
   '/', '/manifest.webmanifest?v=17', '/icon-192.png?v=17', '/icon-512.png?v=17', '/favicon.ico',
   '/styles.css',
-  '/format.js', '/state.js', '/data.js', '/selectors.js', '/analysis.js',
+  '/format.js', '/state.js', '/data.js', '/selectors.js', '/analysis.js', '/dom.js',
   '/boosters.js', '/event-order.js',
-  '/countdown.js', '/ui.js', '/tab-home.js', '/tab-standings.js', '/tab-fantasy.js',
-  '/tab-other.js', '/pull-to-refresh.js', '/notifications.js', '/auto-refresh.js', '/main.js',
+  '/countdown.js', '/ui.js', '/tab-home.js', '/tab-live.js', '/tab-standings.js', '/tab-fantasy.js',
+  '/tab-other.js', '/tab-news.js', '/pull-to-refresh.js', '/notifications.js', '/auto-refresh.js', '/main.js',
 ];
 const DATA_PREFIX = '/data/';
 const MAX_DATA_AGE = 5 * 60 * 1000;
@@ -32,7 +32,13 @@ self.addEventListener('install', e => {
      degrada l'offline sul file mancante invece di bloccare l'aggiornamento. */
   e.waitUntil(
     caches.open(CACHE_NAME)
-      .then(c => Promise.all(SHELL.map(url => c.add(url).catch(() => {}))))
+      /* cache: 'reload' — add() userebbe la copia in cache HTTP del browser: senza
+         Cache-Control il browser puo' riusarla senza rivalidarla, e la cache
+         nuova finisce per contenere i file vecchi. E' successo il 19/09/2026
+         con tab-other.js: la voce 'Zona privata' non arrivava sul telefono
+         mentre tab-fantasy.js (fresco in cache HTTP) si aggiornava. 'reload'
+         salta la cache HTTP e la aggiorna: nel SHELL entra il byte appena servito. */
+      .then(c => Promise.all(SHELL.map(url => c.add(new Request(url, { cache: 'reload' })).catch(() => {}))))
       .then(() => self.skipWaiting())
   );
 });
@@ -48,6 +54,9 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  /* Falso positivo: Request.url e' sempre un URL assoluto valido per specifica
+     Fetch, quindi il costruttore non puo' lanciare. */
+  // pi-lens-ignore: unchecked-throwing-call-js
   const url = new URL(e.request.url);
 
   if (url.pathname.startsWith(DATA_PREFIX)) {

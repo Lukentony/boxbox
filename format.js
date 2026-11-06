@@ -1,8 +1,5 @@
-export function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[c]));
-}
+/* setAttribute evita il breakout HTML, non i protocolli eseguibili: i link del
+   feed devono passare da questa policy prima di entrare nel DOM. */
 export function safeHttpUrl(value, fallback = '') {
   if (typeof value !== 'string' || !/^https?:\/\//i.test(value)) return fallback;
   try {
@@ -23,6 +20,41 @@ export const fmtDate = (iso) => {
   const d = new Date(iso);
   return d.getDate() + ' ' + monthsIT[d.getMonth()];
 };
+export const fmtOra = (iso) => new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+export function sessionLabel(s) {
+  const t = String(s?.type || '').toUpperCase();
+  const n = s?.number;
+  if (t === 'FP') return 'FP' + (n ?? '');
+  if (t === 'PR') return 'Practice';
+  if (t === 'Q') return 'Q' + (n ?? '');
+  if (t === 'Q1') return 'Q1';
+  if (t === 'Q2') return 'Q2';
+  if (t === 'SPR' || t === 'SPRINT') return 'Sprint';
+  if (t === 'WUP') return 'Warm-up';
+  if (t === 'RAC' || t === 'FINAL') return 'Gara';
+  return t || 'Sessione';
+}
+/* Etichetta della posizione: un numero positivo e' una posizione vera, tutto il
+   resto (null, 0, -1: ritirato o non classificato) si mostra DNF. Il tabellone
+   live del feed usa -1 per i ritirati: senza questa guardia finivano in testa. */
+export const posLabel = (p) => {
+  const n = Number(p);
+  return Number.isFinite(n) && n > 0 ? n + '\u00b0' : 'DNF';
+};
+/* Countdown compatto per le liste (calendario): "tra 13 g 4 h", "tra 4 h 20 min",
+   "tra 12 min". Non ticka: si ricalcola a ogni render, come le date accanto. */
+export function traQuanto(iso) {
+  const ms = new Date(iso).getTime() - Date.now();
+  if (!Number.isFinite(ms)) return '';
+  if (ms <= 0) return 'in corso';
+  const g = Math.floor(ms / 86400000);
+  const h = Math.floor((ms % 86400000) / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  if (g > 0) return `tra ${g} g ${h} h`;
+  if (h > 0) return `tra ${h} h ${m} min`;
+  return `tra ${m} min`;
+}
+
 export function timeAgo(dateStr) {
   if (!dateStr) return '';
   const ms = Date.now() - new Date(dateStr).getTime();

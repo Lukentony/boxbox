@@ -6,6 +6,16 @@ const DIR = dirname(fileURLToPath(import.meta.url));
 const ENV_PATH = resolve(DIR, '.env');
 const BASE = 'https://fantasy.motogp.com';
 
+/* Legge una chiave dal .env, stesso formato di fetch-data.mjs: il file e' locale
+   e non entra nel repository. LEAGUE_ID resta fuori dal codice perche' e' un
+   identificativo della lega privata, non una costante pubblica. */
+function envValue(name) {
+  if (process.env[name]) return process.env[name];
+  if (!existsSync(ENV_PATH)) return null;
+  const match = readFileSync(ENV_PATH, 'utf-8').match(new RegExp('^' + name + '=(.+)$', 'm'));
+  return match ? match[1].trim().replace(/^["']|["']$/g, '') : null;
+}
+
 function loadCookie() {
   if (!existsSync(ENV_PATH)) return null;
   const raw = readFileSync(ENV_PATH, 'utf-8');
@@ -24,7 +34,13 @@ async function main() {
     process.exit(1);
   }
 
-  const res = await fetch(`${BASE}/api/en/fantasy/league/5287/leaderboard?limit=1&page=1`, {
+  const leagueId = envValue('LEAGUE_ID');
+  if (!leagueId) {
+    console.error('LEAGUE_ID assente: valorizzalo nel .env (vedi .env.example)');
+    process.exit(1);
+  }
+
+  const res = await fetch(`${BASE}/api/en/fantasy/league/${encodeURIComponent(leagueId)}/leaderboard?limit=1&page=1`, {
     headers: {
       'Cookie': cookie,
       'Accept': 'application/json',
