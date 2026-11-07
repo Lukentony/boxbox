@@ -9,5 +9,11 @@
     "news": "node fetch-news.mjs",
     "pipeline": "node refresh-session.mjs && node fetch-data.mjs && node compute.mjs",
     "test": "node test-boosters.mjs"
+  },
+  "dependencies": {
+    "playwright-core": "^1.60.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.60.0"
   }
 }

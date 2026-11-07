@@ -69,7 +69,11 @@ try {
         events: Object.fromEntries(events.map(event => [event.id, { q: 2, sprint: 3, race: 5, extra: 0, total: 10 }])) });
       const players = [player('Squadra Alfa', 30), player('Squadra Beta', 27), player('Squadra Gamma', 21)];
       const team = { riders: [1, 2], ridersSilver: [], constructors: [], squads: [], boosters: [], value: 50e6 };
-      const standings = points => players.map((p, i) => ({ displayName: p.displayName, q: 2, sprint: 3, race: 5 - i, extra: 0, total: points - i }));
+      const teamConBooster = { riders: [1, 2], ridersSilver: [], constructors: [], squads: [], boosters: [{ boosterType: 'rider', details: { riderId: 7 } }], value: 50e6 };
+      const standings = points => players.map((p, i) => ({
+        displayName: p.displayName, q: 2, sprint: 3, race: 5 - i, extra: 0, total: points - i,
+        ...(i === 0 ? { avvisi: [{ codice: 'booster-fuori-rosa', riderId: 7 }] } : {})
+      }));
       const classifica = () => riders.map((r, i) => ({ position: i + 1, name: r.firstName + ' ' + r.lastName,
         team: 'Team ' + ((i % 3) + 1), gapFirst: i === 0 ? '0.000' : '+' + (i / 10).toFixed(3), bestLap: '1:52.' + (10 + i), totalLaps: 20 - i }));
       const weekend = {
@@ -94,7 +98,7 @@ try {
           players: Object.fromEntries(players.map(p => [p.displayName, p])),
           byEvent: Object.fromEntries(events.map((event, i) => [event.id, { standings: standings(30 + i) }])) },
         allTeams: { teams: Object.fromEntries(events.map(event => [event.id,
-          Object.fromEntries(players.map(p => [p.displayName, team]))])) },
+          Object.fromEntries(players.map((p, i) => [p.displayName, i === 0 ? teamConBooster : team]))])) },
         news: { source: 'Feed demo', items: Array.from({ length: 8 }, (_, i) => ({ title: `${hostile} Notizia ${i}`, categories: [hostile],
           link: i ? 'https://example.test/?q=" onmouseover="window.__xss++' : 'javascript:window.__xss++', image: 'data:image/svg+xml,x' })) },
         weekend,
@@ -142,6 +146,7 @@ try {
     await page.evaluate(() => window.testModules.ui.vaiA('#/fantasy'));
     await page.locator('#s-fantasy.is-active .gp-chip[data-gp="4"]').click();
     assert.deepEqual(await page.locator('#s-fantasy .p-tbl tr.total td:last-child').allTextContents(), ['32', '31', '30'], 'punti del GP scelto, una riga per giocatore');
+    assert.ok((await page.locator('#s-fantasy').innerText()).includes('Da verificare'), 'blocco Da verificare visibile nella card del GP');
     await page.screenshot({ path: resolve(output, `gp-${label}.png`), animations: 'disabled' });
     assert.deepEqual(errors, [], 'nessun errore nei moduli e nel router');
     assert.ok(!requests.some(path => /analisi\.js|motore-view\.js|\/data\//.test(path)), 'nessuna richiesta di moduli privati o dati reali');

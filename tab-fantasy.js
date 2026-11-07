@@ -162,7 +162,7 @@ export function renderSeasonView(players) {
     pricesCard());
 }
 
-// Recuperata 2026-08-08 (Claude): persa nella riscrittura dell'8/08 (commit 8f1f6f0), il backend
+// Ricostruzione della classifica aggregata quando il backend espone solo i parziali per GP: il backend
 // (compute.mjs) continuava a produrre il flag `upcoming` senza che nessuna UI lo consumasse.
 // Codice del 7/06 (commit 12ad823), invariato salvo dove annotato sotto.
 export function renderUpcomingEventView(evMeta, _ev) {
@@ -334,7 +334,7 @@ function testoAvviso(avviso) {
 export function renderEventView(evId, _players) {
   const ev = DATA.breakdown.byEvent[evId];
   const evMeta = DATA.events.find(e => e.id === evId);
-  // Bugfix 2026-08-08 (Claude): guardia evMeta ripristinata (mancava, evMeta.circuit sotto
+  // Guardia se evMeta non e' presente nel calendario (evMeta.circuit sotto
   // esploderebbe) e dispatch upcoming spostato PRIMA della guardia su standings vuote -- un GP
   // upcoming ha standings vuote per definizione, cadeva nel ramo "Nessun dato per questo GP".
   // In 12ad823 la guardia evMeta faceva `root.innerHTML = ...; return;` ma `root` non e' definito

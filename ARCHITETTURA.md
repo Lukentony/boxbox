@@ -53,7 +53,7 @@ nginx e la politica di esposizione devono essere verificate dal gestore del depl
 server o container è stato modificato in questo audit.
 
 Il service worker precachea la shell; le modifiche alla shell richiedono un nuovo nome di
-cache. La versione di questa revisione è `boxbox-public-v21`, indipendente dalla numerazione
+cache. La versione di questa revisione è `boxbox-public-v22`, indipendente dalla numerazione
 del deploy privato. I dati usano network-first con fallback offline; `sw-stale` è un'indicazione,
 non una certificazione di coerenza fra file. La shell non contiene moduli che non esistono in
 questo repository.
