@@ -1,4 +1,4 @@
-const CACHE_NAME = 'boxbox-public-v21';
+const CACHE_NAME = 'boxbox-public-v22';
 const SHELL = [
   '/', '/manifest.webmanifest?v=17', '/icon-192.png?v=17', '/icon-512.png?v=17', '/favicon.ico',
   '/styles.css',

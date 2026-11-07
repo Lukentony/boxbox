@@ -229,6 +229,29 @@ console.log('  Booster Fantasy — Test Suite (mirror)');
 console.log('========================================');
 
 testEtichette();
+
+/* Avvisi: quello che il motore non sa spiegare deve essere dichiarato.
+   Forme reali del 6/11/2026: 'wildcard' presente nei dati e ignorato dal
+   calcolo, e il caso booster 2X su un pilota fuori rosa. */
+console.log('\n[8] Avvisi sui booster non spiegabili');
+const rosa = (oro, argento, boosters) => ({ riders: oro, ridersSilver: argento, boosters });
+assert((M.boosterAvvisi?.(rosa([1, 2], [3], [{ boosterType: 'wildcard', details: null }])) || [])
+  .some(a => a.codice === 'booster-non-modellato' && a.boosterType === 'wildcard'),
+  'wildcard: tipo non modellato dichiarato');
+assert((M.boosterAvvisi?.(rosa([1, 2], [3], [{ boosterType: 'rider', details: { riderId: 9 } }])) || [])
+  .some(a => a.codice === 'booster-fuori-rosa' && a.riderId === 9),
+  'booster 2X su pilota non in rosa: avviso con il pilota');
+assert((M.boosterAvvisi?.(rosa([1, 2], [3], [{ boosterType: 'rider', details: { riderId: 2 } }])) || []).length === 0,
+  'booster 2X su pilota in rosa: nessun avviso');
+assert(M.rosaInvariataConBooster?.(rosa([1, 2], [3], []), rosa([2, 1], [3], [{ boosterType: 'super' }])) === true,
+  'rosa identica e booster attivo: segnalato');
+assert(M.rosaInvariataConBooster?.(rosa([1, 2], [3], []), rosa([1, 9], [3], [{ boosterType: 'super' }])) === false,
+  'rosa cambiata: nessun avviso');
+assert(M.rosaInvariataConBooster?.(rosa([1, 2], [3], []), rosa([1, 2], [3], [])) === false,
+  'nessun booster: niente da segnalare');
+assert(Array.isArray(M.teamEventScoring?.(rosa([1], [], [{ boosterType: 'wildcard', details: null }]), 4,
+  { riderById: { 1: { stats: { events: { 4: { points: 10 } } } } }, constrById: {}, squadById: {} })?.avvisi),
+  'il punteggio porta con se gli avvisi del GP');
 testRider();
 testGolden();
 testSuper();
