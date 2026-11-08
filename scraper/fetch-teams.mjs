@@ -59,7 +59,7 @@ async function main() {
   const nowMs = Date.now();
 
   // Prossimo GP non iniziato con prima sessione entro 24h (stesso criterio pre-show di
-  // fetch-data.mjs/compute.mjs -- bugfix 2026-08-08 Claude, era 48h e disallineato).
+  // fetch-data.mjs/compute.mjs -- finestra a 24h allineata tra i moduli).
   const PRE_SHOW_H = 24;
   const nextEv = events
     .filter(e => e.status !== 'complete' && e.dateStart)

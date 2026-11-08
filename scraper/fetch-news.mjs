@@ -79,7 +79,7 @@ async function main() {
   console.log(`${items.length} articoli`);
 
   // Rileva GP imminente (24h) e tagga articoli correlati.
-  // Bugfix 2026-08-08 (Claude): era 48h, disallineato da compute.mjs/fetch-data.mjs (24h).
+  // Finestra di cache a 24h, allineata a compute.mjs e fetch-data.mjs.
   let upcomingGP = null;
   try {
     const evs = JSON.parse(readFileSync(resolve(DIR, 'events.json'), 'utf-8'));

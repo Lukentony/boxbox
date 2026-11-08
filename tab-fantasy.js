@@ -162,7 +162,7 @@ export function renderSeasonView(players) {
     pricesCard());
 }
 
-// Recuperata 2026-08-08 (Claude): persa nella riscrittura dell'8/08 (commit 8f1f6f0), il backend
+// Ricostruzione della classifica aggregata quando il backend espone solo i parziali per GP: il backend
 // (compute.mjs) continuava a produrre il flag `upcoming` senza che nessuna UI lo consumasse.
 // Codice del 7/06 (commit 12ad823), invariato salvo dove annotato sotto.
 export function renderUpcomingEventView(evMeta, _ev) {
@@ -312,10 +312,29 @@ function righeEvento(team, evId, puntiGp) {
   return righe;
 }
 
+/* Testo leggibile per un avviso del breakdown. Dice cosa controllare, senza
+   affermare una causa che i dati non provano: il calcolo resta quello
+   ufficiale, l'avviso serve a non far passare per regolare un GP strano. */
+function testoAvviso(avviso) {
+  switch (avviso?.codice) {
+    case 'booster-fuori-rosa':
+      return 'Booster 2X su un pilota che non risulta in rosa (id ' + avviso.riderId
+        + '): se avevi cambiato pilota, il dato ufficiale non lo riporta.';
+    case 'booster-non-modellato':
+      return 'Booster «' + String(avviso.boosterType || '').toUpperCase()
+        + '» non modellato: i punti potrebbero non essere completi.';
+    case 'rosa-invariata-con-booster':
+      return 'Rosa identica al GP ' + avviso.eventoPrecedente
+        + ' con un booster attivo: verifica che i cambi siano stati registrati.';
+    default:
+      return 'Dato da verificare.';
+  }
+}
+
 export function renderEventView(evId, _players) {
   const ev = DATA.breakdown.byEvent[evId];
   const evMeta = DATA.events.find(e => e.id === evId);
-  // Bugfix 2026-08-08 (Claude): guardia evMeta ripristinata (mancava, evMeta.circuit sotto
+  // Guardia se evMeta non e' presente nel calendario (evMeta.circuit sotto
   // esploderebbe) e dispatch upcoming spostato PRIMA della guardia su standings vuote -- un GP
   // upcoming ha standings vuote per definizione, cadeva nel ramo "Nessun dato per questo GP".
   // In 12ad823 la guardia evMeta faceva `root.innerHTML = ...; return;` ma `root` non e' definito
@@ -360,6 +379,13 @@ export function renderEventView(evId, _players) {
           nodo('tbody', null, righeEvento(t, evId, p)))));
     } else {
       card.append(nodo('div', { class: 'empty', style: 'padding:20px' }, 'Squad non disponibile.'));
+    }
+
+    const avvisi = Array.isArray(p.avvisi) ? p.avvisi : [];
+    if (avvisi.length) {
+      card.append(nodo('div', { style: 'padding:0 14px 12px;font-size:11px;line-height:1.5;color:var(--text-dim)' },
+        nodo('div', { style: 'font-weight:700;color:#f59e0b;margin-bottom:3px' }, 'Da verificare'),
+        ...avvisi.map(avviso => nodo('div', null, testoAvviso(avviso)))));
     }
 
     carte.push(card);

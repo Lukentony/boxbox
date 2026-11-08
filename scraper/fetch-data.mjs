@@ -63,7 +63,7 @@ async function main() {
   // all-teams.json con dati vuoti (visto 2026-08-08 13:00: 0 giocatori -> file 1.9KB,
   // roster di tutti i GP persi).
   //
-  // Bugfix 2026-08-08 (Claude): la guardia faceva `return` qui, saltando anche
+  // Se le sessioni non sono ancora complete si continua con gli eventi successivi invece di
   // events.json e i dati pubblici sotto (riders/constructors/squads) — non
   // intenzionale, loro non dipendono dalla sessione autenticata rotta. Ora la
   // guardia si applica solo alla sezione roster piu' sotto; qui si prosegue e si
@@ -90,7 +90,7 @@ async function main() {
   const completedEvIds = events.filter(isEventStarted).map(e => e.id);
 
   // Pre-show prossimo GP nelle 24h precedenti alla prima sessione.
-  // Bugfix 2026-08-08 (Claude): era 48h, disallineato da compute.mjs (gia' a 24h dal fix del
+  // Finestra di cache a 24h, allineata a compute.mjs (fissata dopo la revisione
   // 7/08) -- finestra 24-48h dove questo file marcava il GP "pre-show" ma compute.mjs no.
   {
     const PRE_SHOW_H = 24;

@@ -79,6 +79,51 @@ export function goldenRiderIds(team) {
   return [...new Set(ids)];
 }
 
+/* ════════════════════════════════════════════════
+   COSA IL MOTORE NON SA SPIEGARE
+   Non cambiano i punti calcolati: servono a non far passare per "tutto
+   regolare" un GP che il sistema ufficiale ha registrato in modo strano.
+   Perche' esistono (6/11/2026): l'app ufficiale ha preso l'attivazione di un
+   booster senza applicare i cambi di pilota. Il dato che leggiamo e' quello
+   ufficiale, quindi non possiamo correggerlo; possiamo pero' dire che c'e'
+   qualcosa da verificare invece di mostrare un numero pulito. */
+export function boosterAvvisi(team) {
+  const avvisi = [];
+  const inRosa = new Set([...(team?.riders || []), ...(team?.ridersSilver || [])]);
+  (team?.boosters || []).forEach(booster => {
+    const tipo = boosterKind(booster);
+    if (!tipo) {
+      /* Tipo che il motore non traduce in punti: il tag si vede lo stesso
+         (boosterLabel), ma senza effetto noto. Va dichiarato, non ignorato. */
+      const grezzo = typeof booster?.boosterType === 'string' ? booster.boosterType.trim().toLowerCase() : '';
+      if (grezzo) avvisi.push({ codice: 'booster-non-modellato', boosterType: grezzo });
+      return;
+    }
+    if (tipo === 'rider') {
+      const rid = boosterRiderId(booster);
+      /* Il 2X su un pilota che non risulta in rosa: il moltiplicatore viene
+         assegnato a una riga che non dovrebbe esistere. Se il booster e' stato
+         preso e l'acquisto no, questo e' il punto in cui si vede. */
+      if (rid != null && !inRosa.has(rid)) {
+        avvisi.push({ codice: 'booster-fuori-rosa', boosterType: tipo, riderId: rid });
+      }
+    }
+  });
+  return avvisi;
+}
+
+/* Rosa identica al GP precedente con un booster attivo: non e' una prova di
+   errore (tenere la stessa squadra e' legittimo), ma se il giocatore aveva
+   cambiato pilota e il sistema non li ha registrati, questo e' l'unico segnale
+   che i dati ufficiali permettono di calcolare. */
+export function rosaInvariataConBooster(teamPrecedente, team) {
+  if (!teamPrecedente || !team) return false;
+  if (!(team.boosters || []).length) return false;
+  const chiave = t => (t?.riders || []).slice().sort((a, b) => a - b).join(',')
+    + '|' + (t?.ridersSilver || []).slice().sort((a, b) => a - b).join(',');
+  return chiave(teamPrecedente) === chiave(team);
+}
+
 /* ═════════════════════════════════════════════════════════
    I PUNTI DI UN GP, VOCE PER VOCE
    ═════════════════════════════════════════════════════════ */
@@ -182,6 +227,7 @@ export function teamEventScoring(team, eventId, lookups) {
     extra: somma('bonus'),
     total: somma('tot'),
     lines,
+    avvisi: boosterAvvisi(team),
   };
 }
 

@@ -1,13 +1,28 @@
 import { readFileSync, writeFileSync } from 'fs';
-/* La regola dei booster non si riscrive qui: e' lo stesso modulo che disegna i
-   tag in tab-fantasy.js (che lo importa come './boosters.js'). */
-import { goldenRiderIds, riderDoubled, teamDoubled } from '../boosters.js';
+import { rosaInvariataConBooster, teamEventScoring } from '../boosters.js';
 
-const riders     = JSON.parse(readFileSync('riders.json'));
-const events     = JSON.parse(readFileSync('events.json'));
-const constructs = JSON.parse(readFileSync('constructors.json'));
-const squadsJSON = JSON.parse(readFileSync('squads.json'));
-const allData    = JSON.parse(readFileSync('all-teams.json'));
+/* Lettura degli input: un JSON rotto deve dire quale file e perche', invece di
+   uno stack trace di JSON.parse nel log del cron. L'errore resta fatale
+   (compute e' gia' non bloccante nella pipeline). */
+const leggiJson = (nome) => {
+  let testo;
+  try {
+    testo = readFileSync(nome, 'utf-8');
+  } catch (e) {
+    throw new Error(`${nome} non leggibile: ${e.message}`);
+  }
+  try {
+    return JSON.parse(testo);
+  } catch (e) {
+    throw new Error(`${nome} malformato: ${e.message}`);
+  }
+};
+
+const riders     = leggiJson('riders.json');
+const events     = leggiJson('events.json');
+const constructs = leggiJson('constructors.json');
+const squadsJSON = leggiJson('squads.json');
+const allData    = leggiJson('all-teams.json');
 const league     = allData.leaderboard || [];
 const teamsByEvent = allData.teams || {};
 
@@ -15,12 +30,16 @@ const riderById  = Object.fromEntries(riders.map(r => [r.id, r]));
 const constrById = Object.fromEntries(constructs.map(c => [c.id, c]));
 const squadById  = Object.fromEntries(squadsJSON.map(s => [s.id, s]));
 
+/* Un GP conta come corso solo quando almeno un pilota ha dati per quell'evento.
+   Lo stato da solo non basta: un weekend annullato o rinviato per maltempo
+   resta 'active' (o viene chiuso 'complete') senza che nessuna gara si sia
+   corsa, e finiva nel breakdown come GP da zero punti. La sola Q corso invece
+   lascia dati veri e il GP resta.
+   Vedi anche cron/race-phase.py: e' il watcher che, dall'altra parte, smette di
+   aspettare un 'complete' che non arrivera' mai. */
 const isEventStarted = (ev) => {
-  if (ev.status === 'complete') return true;
-  if (ev.status === 'active' && ev.races?.length > 0) {
-    return true; // include active anche parziali
-  }
-  return false;
+  if (ev.status !== 'complete' && !(ev.status === 'active' && ev.races?.length > 0)) return false;
+  return riders.some(r => r.stats?.events?.[String(ev.id)]);
 };
 
 const completed = events.filter(isEventStarted).sort((a, b) => a.order - b.order);
@@ -59,51 +78,59 @@ for (const p of players) {
   const name = p.displayName;
   const byEvent = {};
   let sumQ = 0, sumSp = 0, sumRa = 0, sumEx = 0;
+  /* Squadra del GP precedente dello stesso giocatore: serve al solo controllo
+     "rosa invariata con booster attivo", che i dati ufficiali permettono di
+     calcolare senza inventare niente. */
+  let teamPrecedente = null;
+  let eidPrecedente = null;
 
   for (const ev of completed) {
     const eid = ev.id;
     const team = teamsByEvent[String(eid)]?.[name] || teamsByEvent[eid]?.[name];
     if (!team || !team.riders) continue;
 
-    let q = 0, sp = 0, ra = 0, ex = 0;
-
-    const add = (rid, factor) => {
-      const r = riderById[rid];
-      const e = r?.stats?.events?.[String(eid)];
-      if (!e) {
-        console.warn(`[compute] ${name}: pilota ${rid} senza stats.events[${eid}] (GP ${eid}) -- trattato come 0, controllare riders.json`);
-        return;
+    /* Voci e totali di un GP si calcolano in un posto solo (dist/boosters.js):
+       la tabella Fantasy mostra le stesse voci, quindi non puo' sommare un
+       numero diverso da questo. */
+    const punti = teamEventScoring(team, eid, { riderById, constrById, squadById });
+    for (const linea of punti.lines) {
+      if (linea.senzaDati) {
+        console.warn(`[compute] ${name}: pilota ${linea.id} senza stats.events[${eid}] (GP ${eid}) -- trattato come 0, controllare riders.json`);
       }
-      const basePts = e.points || 0;
-      const riderTotal = basePts * factor;
-      const qComp = (e.q2Points || e.q1Points || 0) * factor;
-      const spComp = (e.sprintPoints || 0) * factor;
-      const raComp = (e.finalPoints || 0) * factor;
-      q  += qComp; sp += spComp; ra += raComp;
-      ex += riderTotal - qComp - spComp - raComp;
-    };
+    }
 
-    /* Il factor di ogni riga viene dalla regola condivisa: l'oro intero,
-       l'argento a meta', il doppio quando riderDoubled lo dice (booster 'rider'
-       su quel pilota oppure 'super' su tutta la squadra, argento compreso).
-       Golden e' un pilota extra a punteggio pieno, gia' fuori rosa. */
-    const teamFactor = teamDoubled(team) ? 2 : 1;
-    (team.riders || []).forEach(rid => add(rid, riderDoubled(team, rid) ? 2 : 1));
-    (team.ridersSilver || []).forEach(rid => add(rid, riderDoubled(team, rid) ? 1 : 0.5));
-    goldenRiderIds(team).forEach(rid => add(rid, riderDoubled(team, rid) ? 2 : 1));
-    (team.constructors || []).forEach(cid => { ex += (constrById[cid]?.stats?.events?.[String(eid)]?.points || 0) * teamFactor; });
-    (team.squads || []).forEach(sid => { ex += (squadById[sid]?.stats?.events?.[String(eid)]?.points || 0) * teamFactor; });
+    /* Avvisi: quello che il motore non sa spiegare finisce nel breakdown e
+       quindi nella card del GP. I punti restano quelli calcolati dal dato
+       ufficiale: un avviso dichiara il dubbio, non lo corregge. */
+    const avvisi = [...(punti.avvisi || [])];
+    if (rosaInvariataConBooster(teamPrecedente, team)) {
+      avvisi.push({ codice: 'rosa-invariata-con-booster', eventoPrecedente: eidPrecedente });
+    }
+    avvisi.forEach(avviso => {
+      console.warn(`[compute] ${name} GP ${eid}: ${avviso.codice}`
+        + (avviso.riderId != null ? ` (pilota ${avviso.riderId})` : '')
+        + (avviso.boosterType ? ` [${avviso.boosterType}]` : '')
+        + (avviso.eventoPrecedente != null ? ` (come il GP ${avviso.eventoPrecedente})` : ''));
+    });
 
-    const tot = Math.round((q + sp + ra + ex) * 10) / 10;
+    const { q, sprint, race, extra } = punti;
     byEvent[eid] = {
       q: Math.round(q * 10) / 10,
-      sprint: Math.round(sp * 10) / 10,
-      race: Math.round(ra * 10) / 10,
-      extra: Math.round(ex * 10) / 10,
-      total: tot,
+      sprint: Math.round(sprint * 10) / 10,
+      race: Math.round(race * 10) / 10,
+      extra: Math.round(extra * 10) / 10,
+      total: Math.round(punti.total * 10) / 10,
+      ...(avvisi.length ? { avvisi } : {}),
     };
-    sumQ += q; sumSp += sp; sumRa += ra; sumEx += ex;
+    teamPrecedente = team;
+    eidPrecedente = eid;
+    sumQ += q; sumSp += sprint; sumRa += race; sumEx += extra;
   }
+
+  const calculatedTotal = Math.round((sumQ + sumSp + sumRa + sumEx) * 10) / 10;
+  // L'API espone solo il totale stagionale: e' la sorgente di verita' quando
+  // una regola non ricostruibile lascia un delta nel dettaglio calcolato.
+  const apiAdjustment = Math.round((p.overallPoints - calculatedTotal) * 10) / 10;
 
   breakdown[name] = {
     displayName: name,
@@ -114,7 +141,9 @@ for (const p of players) {
       q: Math.round(sumQ * 10) / 10,
       sprint: Math.round(sumSp * 10) / 10,
       race: Math.round(sumRa * 10) / 10,
-      extra: Math.round(sumEx * 10) / 10
+      extra: Math.round(sumEx * 10) / 10,
+      apiAdjustment,
+      total: p.overallPoints
     },
     events: byEvent,
   };
@@ -146,8 +175,8 @@ console.log(`\n========== ${completed.length} GP ==========\n`);
 const sorted = Object.values(breakdown).sort((a, b) => b.overallPoints - a.overallPoints);
 for (const p of sorted) {
   const calcTotal = Math.round((p.season.q + p.season.sprint + p.season.race + p.season.extra) * 10) / 10;
-  const diff = Math.round((p.overallPoints - calcTotal) * 10) / 10;
-  console.log(`${p.displayName.padEnd(12)} API=${p.overallPoints}  Calc=${calcTotal}  D=${diff > 0 ? '+' + diff : diff}`);
+  const adjustment = p.season.apiAdjustment;
+  console.log(`${p.displayName.padEnd(12)} API=${p.overallPoints}  Calc=${calcTotal}  Rettifica API=${adjustment > 0 ? '+' + adjustment : adjustment}`);
 
   for (const ev of completed) {
     const e = p.events[ev.id];

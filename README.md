@@ -1,164 +1,127 @@
-# Box Box 🏍️
+# Box Box 🏎️
 
-![Vanilla JS](https://img.shields.io/badge/frontend-vanilla%20JS-f7df1e?logo=javascript&logoColor=black)
-![ES Modules](https://img.shields.io/badge/modules-native%20ES-3178c6)
-![Node.js](https://img.shields.io/badge/pipeline-Node.js-339933?logo=node.js&logoColor=white)
+![Version](https://img.shields.io/badge/version-2.2.0-blue)
+![Status](https://img.shields.io/badge/status-private%20league-blue)
+![Frontend](https://img.shields.io/badge/frontend-vanilla%20JS-f7df1e?logo=javascript&logoColor=black)
+![Modules](https://img.shields.io/badge/modules-native%20ES-3178c6)
+![Pipeline](https://img.shields.io/badge/pipeline-Node.js-339933?logo=node.js&logoColor=white)
 ![Docker](https://img.shields.io/badge/deploy-Docker-2496ed?logo=docker&logoColor=white)
 ![PWA](https://img.shields.io/badge/-PWA-5a0fc8?logo=pwa&logoColor=white)
-![License: MIT](https://img.shields.io/badge/license-MIT-green)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-PWA per seguire la MotoGP 2026 e la classifica FantasyGP di una lega privata tra amici.
+PWA e pipeline dati per seguire la MotoGP e il campionato Fantasy in una lega privata tra amici.
 
-**Perché esiste**: l'app ufficiale Fantasy MotoGP è lenta e piena di pubblicità. Volevo
-qualcosa di veloce, leggero, che funzionasse anche offline — e che mi dicesse subito da dove
-arrivano i punti (quali, sprint, gara, bonus), non solo il totale.
+L'ho costruita perche' l'app ufficiale Fantasy MotoGP e' lenta, piena di annunci e mostra solo il punteggio aggregato. Volevo un'interfaccia leggera e consultabile offline che spiegasse subito da dove arrivano i punti: qualifiche, sprint, gara e bonus, pilota per pilota.
 
-**Disclaimer**: progetto personale, non affiliato a Dorna Sports / MotoGP. Usa le API
-pubbliche/autenticate di `fantasy.motogp.com`: rispetta i loro Termini di Servizio.
+> **Contesto e note legali.** Progetto personale per uso privato, non affiliato a Dorna Sports o MotoGP. Raccoglie i dati tramite le API di `fantasy.motogp.com` per i soli partecipanti alla lega.
 
-## Funzionalità
+## Provalo in due minuti
 
-- Calendario MotoGP 2026 con countdown al prossimo GP e stato live durante il weekend
-- Scheda Live: sessioni del weekend, ordine di arrivo e stato di ciascuna sessione
-- Classifica FantasyGP della lega, con breakdown punti per componente (Quali/Sprint/Gara/Bonus)
-- Andamento punti per GP, giocatore per giocatore
-- Prezzi & valore: chi sale/scende di prezzo, miglior rapporto punti/milione
-- Dettaglio pilota: andamento per GP, storico prezzo, forma recente
-- Classifiche Moto2, Moto3, WorldSBK
-- News da Motorsport.com in una scheda dedicata, con segnale di sentiment per pilota via LLM
-  (NVIDIA NIM) quando disponibile — degradazione soft se la chiave API non è configurata
-- Notifica su Discord quando un rivale della lega cambia roster prima del lock squadra
-- Notifiche in-app (Notification API) durante i weekend di gara
-- PWA installabile, funzionamento offline via service worker
+Per eseguire i test deterministici non servono credenziali, Docker o accessi di rete:
 
-## Anteprime
+```bash
+# 1. Esegui la suite di test (booster, ordinamento eventi, contratto LLM)
+bash scraper/test-audit.sh
 
-Immagini generate da `scraper/test-browser.mjs` con dati sintetici: nessun nome di giocatore reale,
-nessuna richiesta a servizi esterni. Altre viste in `docs/verifiche/`.
+# 2. Genera le 16 schermate con Chromium headless su dati sintetici
+node scraper/test-browser.mjs
 
-| Home | Live | Fantasy |
-| --- | --- | --- |
-| <img src="docs/verifiche/home-mobile.png" width="250" alt="Home: GP in corso, top 3 di stagione, leader fantasy"> | <img src="docs/verifiche/live-mobile.png" width="250" alt="Live: sessioni del weekend e tabellone della sessione in corso"> | <img src="docs/verifiche/fantasy-mobile.png" width="250" alt="Fantasy: andamento punti per GP e prezzi dei piloti"> |
+# 3. Avvia il server statico locale per navigare l'app
+python3 -m http.server 8080
+```
 
-## Stack
+Apri `http://localhost:8080`: il frontend viene eseguito direttamente dal browser senza alcuno step di compilazione.
 
-- **Frontend**: HTML/CSS/JS vanilla, **ES module nativi** (`<script type="module">`,
-  `import`/`export`) — zero dipendenze, **zero build step**. Il browser esegue i moduli così
-  come sono; il deploy è semplicemente copiare i file su un server statico.
-- **Pipeline dati**: Node.js, zero dipendenze runtime, `type: module`
-- **Server**: Docker, `nginx:alpine`
-- **PWA**: Service worker con cache network-first per i dati, cache-first per la shell
-- **Automazione**: cron adattivo (cadenza diversa idle → weekend di gara → pre-lock squadra),
-  rinnovo automatico della sessione via Playwright/Chrome DevTools Protocol
+## Interfaccia
 
-### Perché niente bundler
+Le immagini sono generate in automatico da `scraper/test-browser.mjs` con dati sintetici: nessun nome reale di giocatore, nessuna chiamata esterna.
 
-Il frontend è ~1400 righe divise in moduli per responsabilità (un file per tab, un file per lo
-stato condiviso, uno per i formatter, ecc. — vedi `Struttura` sotto). Gli ES module nativi dei
-browser moderni bastano per tenerlo leggibile senza introdurre una toolchain: niente `npm
-install`, niente step di compilazione, un `<script type="module" src="main.js">` e via.
-L'unico requisito è servire i file via HTTP (non `file://`), per via delle policy CORS sui
-moduli. La radice HTTP deve contenere solo frontend e JSON destinati al pubblico: non
-servire la radice del clone con un server generico, perché include `scraper/.env` dopo il setup.
-Il Dockerfile esistente seleziona esplicitamente i file da servire.
+| Home | Live | Fantasy (con avvisi) |
+| :---: | :---: | :---: |
+| <img src="docs/verifiche/home-mobile.png" width="250" alt="Home: GP in corso, top 3 piloti, leader lega"> | <img src="docs/verifiche/live-mobile.png" width="250" alt="Live: sessioni del weekend e tabellone tempi"> | <img src="docs/verifiche/gp-mobile.png" width="250" alt="Fantasy: dettaglio GP con blocco Da verificare"> |
 
-## Setup
+- **Home**: stato del prossimo GP, classifica sintetica piloti e leader della lega.
+- **Live**: sessioni del weekend in corso, stato, orari e tabellone con distacchi e giri completati.
+- **Classifiche**: piloti MotoGP, costruttori, team, calendario completo e classifiche Moto2, Moto3 e WorldSBK.
+- **Fantasy**: andamento punteggi per GP, storico prezzi piloti e sezione valore (punti per milione speso).
+- **Notizie**: rassegna stampa con analisi automatica del sentiment per ciascun pilota tramite LLM (NVIDIA NIM).
+- **Impostazioni**: preferenze locali, notifiche in-app e scorciatoie utili.
+
+L'archivio completo di tutte le 16 viste desktop (1440x1000) e mobile (390x844) si trova in [docs/verifiche/](docs/verifiche/LEGGIMI.md).
+
+## Trasparenza sui dati: il blocco «Da verificare»
+
+Nel gioco ufficiale capita che il sistema registri l'attivazione di un booster senza applicare i cambi di formazione associati, o che compaiano modalita' speciali non documentate come `wildcard`.
+
+BoxBox non riscrive i punteggi ufficiali: la graduatoria della lega deve coincidere con quella del regolamento. Quando un dato non e' spiegabile, il motore calcolo aggiunge un blocco giallo **«Da verificare»** nella scheda del GP e nel log del cron:
+
+1. **Booster fuori rosa**: booster 2X applicato a un pilota che non risulta tra i titolari della squadra.
+2. **Rosa invariata con booster**: formazione identica al GP precedente nonostante un booster consumato.
+3. **Booster non modellato**: uso di gettoni speciali di cui il regolamento ufficiale non descrive la formula esatta.
+
+In questo modo chi consulta l'app sa se una variazione di punti deriva dalla gara o da un'anomalia della fonte.
+
+## Architettura e scelte tecniche
+
+### Frontend no-build
+Il frontend (~1400 righe di codice) usa ES modules nativi del browser (`<script type="module">`). Nessun bundler, nessun framework, nessun `npm install`:
+- **Nodi DOM sicuri** (`dom.js`): i dati esterni vengono inseriti solo come testo (`textContent`), mai interpretati come codice HTML.
+- **Service Worker** (`sw.js`): cache-first per i file dell'applicazione (versione `boxbox-public-v22`), network-first con fallback offline per i file JSON dei dati.
+- **Stato reattivo minimale** (`state.js`, `ui.js`): routing basato su hash (`#/live`, `#/fantasy`), rendering mirato della sola vista attiva.
+
+### Pipeline dati
+La pipeline gira sotto Node.js ed e' orchestrata da cron con cadenze adattive:
+- **Regime orario**: aggiornamento classifiche e rose durante la settimana.
+- **Regime weekend di gara**: controlli frequenti (ogni 2-15 minuti) durante le sessioni in pista.
+- **Pre-lock squadra**: monitoraggio delle modifiche dell'ultimo minuto con notifiche via webhook Discord.
+- **Rinnovo sessione**: recupero headless del token di sessione Dorna tramite Chromium (`scraper/renew-dat.mjs`).
+
+### Dipendenze
+- **Browser e calcolo punteggi**: zero dipendenze esterne.
+- **Rinnovo automatico della sessione**: `playwright-core` (eseguito dal cron sul server).
+- **Verifica grafica con screenshot**: `playwright` (strumento di sviluppo e CI).
+
+## Setup per la produzione
 
 ```bash
 cd scraper
-cp .env.example .env   # compila LEAGUE_ID, credenziali, RIVALS, webhook Discord (tutto opzionale
-                        # tranne le credenziali Fantasy — vedi i commenti nel file)
+cp .env.example .env   # inserisci LEAGUE_ID e credenziali Dorna
 cd ..
-bash cron/boxbox-cron.sh   # primo giro: popola data/ (pubblici + autenticati + breakdown)
-bash cron/boxbox-news.sh   # opzionale: news + classifiche Moto2/Moto3/WSBK
 
-docker compose up --build
+# Primo popolamento dati
+bash cron/boxbox-cron.sh
+bash cron/boxbox-news.sh
+
+# Avvio del container Nginx
+docker compose up -d --build
 ```
 
-`cron/boxbox-cron.sh` è anche l'unico posto che sa pubblicare i JSON generati da `scraper/`
-dentro `data/` (i moduli `scraper/*.mjs` scrivono nella propria cartella, non nella web root) —
-lanciare i comandi `node` uno per uno senza passare da lì lascerebbe `data/` vuota e ogni
-`fetch()` del frontend fallirebbe in silenzio.
+I file generati vengono scritti dentro `data/`, cartella montata in sola lettura nel container web.
 
-## Verifica locale
+## Verifiche e test automatici
 
-Da root del clone: `bash scraper/test-audit.sh`. Non richiede credenziali o rete e usa fixture
-sintetiche; include booster, calendario, rendering e contratto delle classificazioni news.
-Il vecchio `test-weekend-pipeline.mjs` è anche un controllo di dati locali generati, non un gate
-ermetico per un clone vuoto: i suoi controlli su copie delle regole non sostituiscono questi test.
+Il progetto include suite di test isolate:
 
-Il controllo browser opzionale è `node scraper/test-browser.mjs`, con Playwright e un
-Chromium già installati; `BOXBOX_CHROMIUM` può indicare l'eseguibile locale. Non installa nulla,
-serve solo una lista esplicita di file su loopback, blocca richieste esterne e salva screenshot
-con dati sintetici in `docs/verifiche/`. Non avvia finestre interattive.
+```bash
+# Test unitari deterministici (48 asserzioni su booster, logica e avvisi)
+npm --prefix scraper test
 
-Architettura: [ARCHITETTURA.md](ARCHITETTURA.md). Esito e limiti dell'audit:
-[docs/audit-2026-11-05.md](docs/audit-2026-11-05.md).
+# Test integrazione cronologia eventi e contratti news
+node scraper/test-event-order.mjs
+node scraper/test-news-classification.mjs
 
-## Struttura
-
-```
-index.html                  Shell HTML statica + <script type="module" src="main.js">
-styles.css                  Design system (un solo file, nessun preprocessore)
-main.js                     Entry point: registra il service worker, avvia il caricamento dati
-state.js                    Stato condiviso (DATA + tab/GP selezionati)
-dom.js                      Costruzione dei nodi DOM: i testi esterni restano testo, non markup
-data.js                     load() / refreshData() — fetch e popolamento di DATA
-format.js, selectors.js,    Helper puri: formattazione e policy URL, derivazioni sui dati,
-  analysis.js, countdown.js   metriche prezzo/valore/forma, countdown
-event-order.js              Ordine cronologico condiviso (order, fallback data; mai ID)
-boosters.js                 Regola booster Fantasy (rider 2X, golden, super 2X):
-                             la usano tab-fantasy.js e scraper/compute.mjs
-ui.js                       Navigazione tra tab, orchestrazione del render
-tab-home.js                 Tab Home (countdown, top3, anteprima news)
-tab-live.js                 Tab Live (sessioni del weekend, risultati)
-tab-standings.js            Tab Campionato (piloti/costruttori/team/calendario/altre serie)
-tab-fantasy.js              Tab Fantasy (classifica stagione, dettaglio GP)
-tab-news.js                 Tab Notizie
-tab-other.js                Pannello Impostazioni (preferenze, link utili)
-pull-to-refresh.js,         Pull-to-refresh, notifiche in-app, auto-refresh nei weekend
-  notifications.js,
-  auto-refresh.js
-sw.js                       Service worker (cache shell + dati)
-
-data/                       JSON generati dalla pipeline (non versionati, li crea/aggiorna
-                             cron/boxbox-cron.sh) — è qui che il frontend fa fetch()
-
-scraper/
-├── fetch-data.mjs          Leaderboard + roster squadre da fantasy.motogp.com
-├── fetch-teams.mjs         Fetch leggero del solo GP in pre-show (per il watcher rivali)
-├── fetch-news.mjs          RSS Motorsport.com, raggruppamento per GP imminente
-├── fetch-other-categories.mjs  Classifiche Moto2/Moto3/WSBK da Wikipedia
-├── fetch-rider-history.mjs Storico piloti per circuito/meteo da API MotoGP, 1x/stagione
-├── fetch-weekend.mjs       Sessioni e risultati del weekend da API MotoGP pubblica
-├── analyze-news.mjs        Classificazione sentiment news per pilota via LLM (opzionale)
-├── compute.mjs             Calcolo breakdown punti (Quali/Sprint/Gara/Bonus)
-├── team-diff.mjs           Diff roster rivali tra GP, anti-spam a due fasi
-├── refresh-session.mjs     Verifica validità sessione/cookie
-├── renew-dat.mjs           Rinnovo automatico cookie via Playwright/CDP
-├── test-boosters.mjs       Test della regola booster condivisa (modulo + compute.mjs)
-├── test-event-order.mjs    Test dell'ordine cronologico e del watcher rivali
-├── test-news-classification.mjs  Test del contratto di classificazione news
-├── test-browser.mjs        Controllo browser opzionale (Playwright)
-├── test-weekend-pipeline.mjs  Test suite dry-run della pipeline
-└── .env.example            Template configurazione
-
-cron/
-├── boxbox-cron.sh                  Pipeline oraria (dati + calcolo + storico piloti 1x/stagione)
-├── boxbox-news.sh                  News + classifiche altre categorie, 2x/giorno
-├── boxbox-race-watch.sh            Cadenza adattiva durante i weekend di gara
-├── boxbox-news-signal-watch.sh     Cadenza adattiva pre-lock squadra + watcher rivali
-├── race-phase.py, news-signal-phase.py   "Cervello" delle cadenze adattive
-├── nvidia-model-health.py          Sceglie il modello LLM più sano tra quelli disponibili
-└── notify-discord.sh               Notifiche (DAT scaduto, cambi rivali, ecc.)
+# Test end-to-end con Chromium headless (desktop e mobile)
+node scraper/test-browser.mjs
 ```
 
-## Pipeline
+Documentazione dettagliata dell'architettura: [ARCHITETTURA.md](ARCHITETTURA.md).
 
-Cron orario: dati pubblici + autenticati, calcolo breakdown. Cron adattivo durante i weekend di
-gara e nella finestra prima del blocco squadra (fino a ogni 2-15 minuti, altrimenti idle). Cron
-2x/giorno: news + classifiche Moto2/Moto3/WSBK.
+## Limiti noti
+
+- **Dipendenza da API esterne**: se Dorna modifica gli endpoint non documentati o la struttura del login, la pipeline richiede un aggiornamento manuale.
+- **Rinnovo headless**: dipende dalla stabilita' visiva della pagina di autenticazione Dorna.
+- **Regole speciali**: gettoni come `wildcard` restano segnalati come non modellati finche' la formula dei punti non viene chiarita ufficialmente.
 
 ## Licenza
 
-MIT — vedi [LICENSE](LICENSE).
+MIT. Vedi [LICENSE](LICENSE).
